@@ -40,11 +40,10 @@ public class Game
 	{
 		public Sprite Sprite;
 
-		public float PositionX;
-		public float PositionY;
+		public Vector2 Position;
 
-		public float SpeedX = 2;
-		public float SpeedY = 1;
+		public float Speed = 1.5f;
+		public float Angle = 0.0f;
 	}
 
 	private List<Face> m_Faces ~ delete _;
@@ -58,7 +57,7 @@ public class Game
 		m_Music = LoadMusicStreamFromMemory(".ogg", (char8*)&MusicData, MusicData.Count);
 		defer PlayMusicStream(m_Music);
 
-		let faceCount = 100;
+		let faceCount = 150;
 		let luigiIndex = GetRandomValue(0, faceCount - 1);
 
 		m_Faces = new .(faceCount);
@@ -73,12 +72,14 @@ public class Game
 					Sprite.FACE_LUIGI
 					:
 					 (Sprite)GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO),
-				PositionX = GetRandomValue(0 + (int32)halfFaceWidth, GetScreenWidth() - (int32)halfFaceWidth),
-				PositionY = GetRandomValue(0 + (int32)halfFaceHeight, GetScreenHeight() - (int32)halfFaceHeight),
-				SpeedX = (GetRandomValue(0, 1) == 1) ? -1 : 1,
-				SpeedY = (GetRandomValue(0, 1) == 1) ? -1 : 1
+				Position = .(
+					GetRandomValue(0 + (int32)halfFaceWidth, GetScreenWidth() - (int32)halfFaceWidth),
+					GetRandomValue(0 + (int32)halfFaceHeight, GetScreenHeight() - (int32)halfFaceHeight)),
+				Angle = GetRandomValue(0, 360)
 			});
 		}
+
+		// NOTE: We should do a little test to check that Luigi is visible before starting.
 	}
 
 	public void Update()
@@ -100,38 +101,38 @@ public class Game
 		let halfFaceWidth = faceWidth / 2;
 		let halfFaceHeight = faceHeight / 2;
 
-		let screenMinX = 0 + halfFaceWidth;
-		let screenMinY = 0 + halfFaceHeight;
-		let screenMaxX = GetScreenWidth() - halfFaceWidth;
-		let screenMaxY = GetScreenHeight() - halfFaceHeight;
+		let screenMin = Vector2(0 + halfFaceWidth, 0 + halfFaceHeight);
+		let screenMax = Vector2(GetScreenWidth() - halfFaceWidth,  GetScreenHeight() - halfFaceHeight);
 
 		for (var face in ref m_Faces)
 		{
-			bool faceOutsideX() => face.PositionX > screenMaxX || face.PositionX < screenMinX;
-			bool faceOutsideY() => face.PositionY > screenMaxY || face.PositionY < screenMinY;
+			var angleRad = face.Angle * DEG2RAD;
+			let direction = Vector2(Math.Cos(angleRad), Math.Sin(angleRad));
+
+			face.Position.x += direction.x * face.Speed;
+			face.Position.y += direction.y * face.Speed;
+
+			bool faceOutsideX() => face.Position.x > screenMax.x || face.Position.x < screenMin.x;
+			bool faceOutsideY() => face.Position.y > screenMax.y || face.Position.y < screenMin.y;
 
 			if (faceOutsideX())
 			{
-				face.SpeedX *= -1;
-				while (faceOutsideX()) // Hack to prevent stuff from getting stuck
-				{
-					face.PositionX += face.SpeedX;
-				}
+				face.Angle = 180.0f - face.Angle;
+				face.Position.x = Math.Clamp(face.Position.x, screenMin.x, screenMax.x);
 			}
 			if (faceOutsideY())
 			{
-				face.SpeedY *= -1;
-				while (faceOutsideY()) // Hack to prevent stuff from getting stuck
-				{
-					face.PositionY += face.SpeedY;
-				}
+				face.Angle = -face.Angle;
+				face.Position.y = Math.Clamp(face.Position.y, screenMin.y, screenMax.y);
 			}
 
-			face.PositionX += face.SpeedX;
-			face.PositionY += face.SpeedY;
+			if (face.Sprite == .FACE_LUIGI)
+			{
+				DrawCircleV(.(face.Position.x, face.Position.y), 64, WHITE);
+			}
 
 			let faceIndex = (int)face.Sprite - 10;
-			DrawTexturePro(m_SpriteSheet, .(faceIndex * 32, 0, 32, 32), .(face.PositionX, face.PositionY, faceWidth, faceHeight), .(faceWidth * 0.5f, faceHeight * 0.5f), 0, WHITE);
+			DrawTexturePro(m_SpriteSheet, .(faceIndex * 32, 0, 32, 32), .(face.Position.x, face.Position.y, faceWidth, faceHeight), .(halfFaceWidth, halfFaceHeight), 0, WHITE);
 		}
 	}
 }
