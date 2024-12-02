@@ -1,0 +1,20 @@
+FileVersion = 1
+Projects = {FindLuigi = {Path = "."}, raylib-beef = {Path = "vendor/raylib-beef/raylib-beef"}}
+
+[Workspace]
+StartupProject = "FindLuigi"
+
+[Configs.Debug.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+
+[Configs.Paranoid.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+
+[Configs.Test.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
