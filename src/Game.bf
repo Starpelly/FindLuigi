@@ -63,7 +63,7 @@ public class Game
 		m_Music = LoadMusicStreamFromMemory(".ogg", (char8*)&MusicData, MusicData.Count);
 		defer PlayMusicStream(m_Music);
 
-		let faceCount = 10;
+		let faceCount = 20;
 		let luigiIndex = GetRandomValue(0, faceCount - 1);
 
 		m_Faces = new .(faceCount);
@@ -91,6 +91,8 @@ public class Game
 		m_RenderTextureGame = LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
 	}
 
+	private Vector2 m_MousePositionViewport;
+
 	public ~this()
 	{
 		UnloadRenderTexture(m_RenderTextureGame);
@@ -107,14 +109,17 @@ public class Game
 		defer EndDrawing();
 		defer DrawFPS(20, 20);
 
+		let viewportSize = getLargestSizeForViewport();
+		let viewportPos = getCenteredPositionForViewport(viewportSize);
+
+		m_MousePositionViewport = .((GetMouseX() / viewportSize.x) * SCREEN_WIDTH, (GetMouseY() / viewportSize.y) * SCREEN_HEIGHT);
+		m_MousePositionViewport = .(Math.Clamp(m_MousePositionViewport.x, 0, SCREEN_WIDTH), Math.Clamp(m_MousePositionViewport.y, 0, SCREEN_HEIGHT));
+
 		BeginTextureMode(m_RenderTextureGame);
 		{
 			drawGame();
 		}
 		EndTextureMode();
-
-		let viewportSize = GetLargestSizeForViewport();
-		let viewportPos = GetCenteredPositionForViewport(viewportSize);
 
 		ClearBackground(.(15, 15, 15, 255));
 		DrawTexturePro(m_RenderTextureGame.texture, .(0, 0, m_RenderTextureGame.texture.width, -m_RenderTextureGame.texture.height), .(0, 0, viewportSize.x, viewportSize.y), .(0, 0), 0, WHITE);
@@ -132,8 +137,12 @@ public class Game
 		let screenMin = Vector2(0 + halfFaceWidth, 0 + halfFaceHeight);
 		let screenMax = Vector2(SCREEN_WIDTH - halfFaceWidth, SCREEN_HEIGHT - halfFaceHeight);
 
+		var hoveringFaceIndex = -1;
+		var i = 0;
 		for (var face in ref m_Faces)
 		{
+			defer { i++; }
+
 			var angleRad = face.Angle * DEG2RAD;
 			let direction = Vector2(Math.Cos(angleRad), Math.Sin(angleRad));
 
@@ -156,15 +165,41 @@ public class Game
 
 			if (face.Sprite == .FACE_LUIGI)
 			{
-				// DrawCircleV(.(face.Position.x, face.Position.y), 64, WHITE);
 			}
 
+			if (m_MousePositionViewport.x >= (face.Position.x - halfFaceWidth) && m_MousePositionViewport.x <= (face.Position.x - halfFaceWidth) + faceWidth
+				&& m_MousePositionViewport.y >= (face.Position.y - halfFaceHeight) && m_MousePositionViewport.y <= (face.Position.y - halfFaceHeight) + faceHeight)
+			{
+				hoveringFaceIndex = i;
+			}
+		}
+
+		if (hoveringFaceIndex >= 0)
+		{
+			var face = m_Faces[hoveringFaceIndex];
+			DrawCircleV(.(face.Position.x, face.Position.y), 48, .(255, 255, 255, 180));
+
+			if (IsMouseButtonPressed(.MOUSE_BUTTON_LEFT))
+			{
+				if (face.Sprite == .FACE_LUIGI)
+				{
+					Console.WriteLine("You found Luigi! +5 points!");
+				}
+				else
+				{
+					Console.WriteLine("That's not Luigi! -10 points!");
+				}
+			}
+		}
+
+		for (var face in ref m_Faces)
+		{
 			let faceIndex = (int)face.Sprite - 10;
 			DrawTexturePro(m_SpriteSheet, .(faceIndex * 32, 0, 32, 32), .(face.Position.x, face.Position.y, faceWidth, faceHeight), .(halfFaceWidth, halfFaceHeight), 0, WHITE);
 		}
 	}
 
-	private static Vector2 GetLargestSizeForViewport()
+	private Vector2 getLargestSizeForViewport()
 	{
 	    let windowSize = Vector2(GetScreenWidth(), GetScreenHeight());
 
@@ -179,7 +214,7 @@ public class Game
 	    return .(aspectWidth, aspectHeight);
 	}
 
-	private static Vector2 GetCenteredPositionForViewport(Vector2 aspectSize)
+	private Vector2 getCenteredPositionForViewport(Vector2 aspectSize)
 	{
 	    let windowSize = Vector2(GetScreenWidth(), GetScreenHeight());
 
