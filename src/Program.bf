@@ -11,7 +11,7 @@ class Program
 	public static int Main(String[] args)
 	{
 		SetConfigFlags(.FLAG_WINDOW_RESIZABLE);
-		InitWindow(800, 600, "Find Luigi");
+		InitWindow(1280, 768, "Find Luigi");
 		defer CloseWindow();
 
 		InitAudioDevice();

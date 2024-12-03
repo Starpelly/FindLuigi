@@ -13,6 +13,8 @@ public class Game
 	private static uint8[?] MusicData = Compiler.ReadBinary("assets/music.ogg");
 	private Music m_Music;
 
+	private RenderTexture m_RenderTextureGame;
+
 	private enum Sprite
 	{
 		// Nice that these line up, looks nice :)
@@ -23,8 +25,12 @@ public class Game
 	}
 
 	private int m_FaceScale = 2;
-	private const int FACE_WIDTH = 32;
-	private const int FACE_HEIGHT = 32;
+	private const int32 FACE_WIDTH = 32;
+	private const int32 FACE_HEIGHT = 32;
+
+	private const int32 SCREEN_WIDTH = 256 * 2;
+	private const int32 SCREEN_HEIGHT = 192 * 2;
+	private const float SCREEN_ASPECT_RATIO = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
 
 	private int getFaceWidth()
 	{
@@ -57,7 +63,7 @@ public class Game
 		m_Music = LoadMusicStreamFromMemory(".ogg", (char8*)&MusicData, MusicData.Count);
 		defer PlayMusicStream(m_Music);
 
-		let faceCount = 150;
+		let faceCount = 10;
 		let luigiIndex = GetRandomValue(0, faceCount - 1);
 
 		m_Faces = new .(faceCount);
@@ -72,29 +78,51 @@ public class Game
 					Sprite.FACE_LUIGI
 					:
 					 (Sprite)GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO),
+				Speed = i == luigiIndex ? 1.54f : 1.5f, // Luigi is slightly faster so he can't get stuck behind another face
 				Position = .(
-					GetRandomValue(0 + (int32)halfFaceWidth, GetScreenWidth() - (int32)halfFaceWidth),
-					GetRandomValue(0 + (int32)halfFaceHeight, GetScreenHeight() - (int32)halfFaceHeight)),
+					GetRandomValue(0 + (int32)halfFaceWidth, SCREEN_WIDTH - (int32)halfFaceWidth),
+					GetRandomValue(0 + (int32)halfFaceHeight, SCREEN_HEIGHT - (int32)halfFaceHeight)),
 				Angle = GetRandomValue(0, 360)
 			});
 		}
 
 		// NOTE: We should do a little test to check that Luigi is visible before starting.
+
+		m_RenderTextureGame = LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
+	}
+
+	public ~this()
+	{
+		UnloadRenderTexture(m_RenderTextureGame);
 	}
 
 	public void Update()
 	{
-		UpdateMusicStream(m_Music);
+		// UpdateMusicStream(m_Music);
 	}
 
 	public void Draw()
 	{
 		BeginDrawing();
 		defer EndDrawing();
-
-		ClearBackground(BLACK);
-
 		defer DrawFPS(20, 20);
+
+		BeginTextureMode(m_RenderTextureGame);
+		{
+			drawGame();
+		}
+		EndTextureMode();
+
+		let viewportSize = GetLargestSizeForViewport();
+		let viewportPos = GetCenteredPositionForViewport(viewportSize);
+
+		ClearBackground(.(15, 15, 15, 255));
+		DrawTexturePro(m_RenderTextureGame.texture, .(0, 0, m_RenderTextureGame.texture.width, -m_RenderTextureGame.texture.height), .(0, 0, viewportSize.x, viewportSize.y), .(0, 0), 0, WHITE);
+	}
+
+	private void drawGame()
+	{
+		ClearBackground(BLACK);
 
 		let faceWidth = getFaceWidth();
 		let faceHeight = getFaceHeight();
@@ -102,7 +130,7 @@ public class Game
 		let halfFaceHeight = faceHeight / 2;
 
 		let screenMin = Vector2(0 + halfFaceWidth, 0 + halfFaceHeight);
-		let screenMax = Vector2(GetScreenWidth() - halfFaceWidth,  GetScreenHeight() - halfFaceHeight);
+		let screenMax = Vector2(SCREEN_WIDTH - halfFaceWidth, SCREEN_HEIGHT - halfFaceHeight);
 
 		for (var face in ref m_Faces)
 		{
@@ -128,11 +156,36 @@ public class Game
 
 			if (face.Sprite == .FACE_LUIGI)
 			{
-				DrawCircleV(.(face.Position.x, face.Position.y), 64, WHITE);
+				// DrawCircleV(.(face.Position.x, face.Position.y), 64, WHITE);
 			}
 
 			let faceIndex = (int)face.Sprite - 10;
 			DrawTexturePro(m_SpriteSheet, .(faceIndex * 32, 0, 32, 32), .(face.Position.x, face.Position.y, faceWidth, faceHeight), .(halfFaceWidth, halfFaceHeight), 0, WHITE);
 		}
+	}
+
+	private static Vector2 GetLargestSizeForViewport()
+	{
+	    let windowSize = Vector2(GetScreenWidth(), GetScreenHeight());
+
+	    float aspectWidth = windowSize.x;
+	    float aspectHeight = aspectWidth / SCREEN_ASPECT_RATIO;
+	    if (aspectHeight > windowSize.y)
+	    {
+	        aspectHeight = windowSize.y;
+	        aspectWidth = aspectHeight * SCREEN_ASPECT_RATIO;
+	    }
+
+	    return .(aspectWidth, aspectHeight);
+	}
+
+	private static Vector2 GetCenteredPositionForViewport(Vector2 aspectSize)
+	{
+	    let windowSize = Vector2(GetScreenWidth(), GetScreenHeight());
+
+	    float viewportX = (windowSize.x / 2.0f) - (aspectSize.x / 2.0f);
+	    float viewportY = (windowSize.y / 2.0f) - (aspectSize.y / 2.0f);
+
+	    return .(viewportX, viewportY);
 	}
 }
