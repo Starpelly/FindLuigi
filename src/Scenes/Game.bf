@@ -3,12 +3,10 @@ using System.Collections;
 using RaylibBeef;
 using static RaylibBeef.Raylib;
 
-namespace FindLuigi;
+namespace FindLuigi.Scenes;
 
-public class Game
+public class Game : Scene
 {
-	private Assets m_AssetManager ~ delete _;
-
 	private RenderTexture m_RenderTextureGame;
 
 	private enum Sprite
@@ -20,13 +18,17 @@ public class Game
 		FACE_WARIO
 	}
 
+	public enum State
+	{
+		STATE_PLAYING,
+		STATE_SUCCESS
+	}
+
 	private int m_FaceScale = 2;
 	private const int32 FACE_WIDTH = 32;
 	private const int32 FACE_HEIGHT = 32;
 
-	private const int32 SCREEN_WIDTH = 256 * 2;
-	private const int32 SCREEN_HEIGHT = 192 * 2;
-	private const float SCREEN_ASPECT_RATIO = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
+	private Vector2 m_MousePositionViewport;
 
 	private int getFaceWidth()
 	{
@@ -50,12 +52,11 @@ public class Game
 
 	private List<Face> m_Faces ~ delete _;
 
-	public this()
+	public override void OnLoad()
 	{
-		m_AssetManager = new .();
-		defer PlayMusicStream(m_AssetManager.Music);
+		defer PlayMusicStream(Engine.Assets.Music);
 
-		let faceCount = 70;
+		let faceCount = 10;
 		let luigiIndex = GetRandomValue(0, faceCount - 1);
 
 		m_Faces = new .(faceCount);
@@ -72,40 +73,36 @@ public class Game
 					 (Sprite)GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO),
 				Speed = i == luigiIndex ? 1.54f : 1.5f, // Luigi is slightly faster so he can't get stuck behind another face
 				Position = .(
-					GetRandomValue(0 + (int32)halfFaceWidth, SCREEN_WIDTH - (int32)halfFaceWidth),
-					GetRandomValue(0 + (int32)halfFaceHeight, SCREEN_HEIGHT - (int32)halfFaceHeight)),
+					GetRandomValue(0 + (int32)halfFaceWidth, Engine.SCREEN_WIDTH - (int32)halfFaceWidth),
+					GetRandomValue(0 + (int32)halfFaceHeight, Engine.SCREEN_HEIGHT - (int32)halfFaceHeight)),
 				Angle = GetRandomValue(0, 360)
 			});
 		}
 
 		// NOTE: We should do a little test to check that Luigi is visible before starting.
 
-		m_RenderTextureGame = LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
+		m_RenderTextureGame = LoadRenderTexture(Engine.SCREEN_WIDTH, Engine.SCREEN_HEIGHT);
 	}
 
-	private Vector2 m_MousePositionViewport;
-
-	public ~this()
+	public override void OnUnload()
 	{
 		UnloadRenderTexture(m_RenderTextureGame);
 	}
 
-	public void Update()
+	public override void OnUpdate()
 	{
-		UpdateMusicStream(m_AssetManager.Music);
+		// UpdateMusicStream(m_AssetManager.Music);
 	}
 
-	public void Draw()
+	public override void OnDraw()
 	{
-		BeginDrawing();
-		defer EndDrawing();
 		defer DrawFPS(20, 20);
 
 		let viewportSize = getLargestSizeForViewport();
 		let viewportPos = getCenteredPositionForViewport(viewportSize);
 
-		m_MousePositionViewport = .((GetMouseX() / viewportSize.x) * SCREEN_WIDTH, (GetMouseY() / viewportSize.y) * SCREEN_HEIGHT);
-		m_MousePositionViewport = .(Math.Clamp(m_MousePositionViewport.x, 0, SCREEN_WIDTH), Math.Clamp(m_MousePositionViewport.y, 0, SCREEN_HEIGHT));
+		m_MousePositionViewport = .((GetMouseX() / viewportSize.x) * Engine.SCREEN_WIDTH, (GetMouseY() / viewportSize.y) * Engine.SCREEN_HEIGHT);
+		m_MousePositionViewport = .(Math.Clamp(m_MousePositionViewport.x, 0, Engine.SCREEN_WIDTH), Math.Clamp(m_MousePositionViewport.y, 0, Engine.SCREEN_HEIGHT));
 
 		BeginTextureMode(m_RenderTextureGame);
 		{
@@ -127,7 +124,7 @@ public class Game
 		let halfFaceHeight = faceHeight / 2;
 
 		let screenMin = Vector2(0 + halfFaceWidth, 0 + halfFaceHeight);
-		let screenMax = Vector2(SCREEN_WIDTH - halfFaceWidth, SCREEN_HEIGHT - halfFaceHeight);
+		let screenMax = Vector2(Engine.SCREEN_WIDTH - halfFaceWidth, Engine.SCREEN_HEIGHT - halfFaceHeight);
 
 		var hoveringFaceIndex = -1;
 		for (var i < m_Faces.Count)
@@ -194,19 +191,19 @@ public class Game
 			var face = m_Faces[i];
 
 			let faceIndex = (int)face.Sprite - 10;
-			DrawTexturePro(m_AssetManager.SpriteSheet, .(faceIndex * 32, 0, 32, 32), .(face.Position.x, face.Position.y, faceWidth, faceHeight), .(halfFaceWidth, halfFaceHeight), 0,
+			DrawTexturePro(Engine.Assets.SpriteSheet.Texture, .(faceIndex * 32, 0, 32, 32), .(face.Position.x, face.Position.y, faceWidth, faceHeight), .(halfFaceWidth, halfFaceHeight), 0,
 				(hoveringFaceIndex == i) ? RED : WHITE);
 		}
 	}
 
 	private bool pixelOnSpriteTransparent(int spriteX, int spriteY, int pixelX, int pixelY)
 	{
-		let image = m_AssetManager.SpriteSheetImage;
+		let image = Engine.Assets.SpriteSheet.Image;
 
 		let positionX = spriteX + pixelX;
 		let positionY = spriteY + pixelY;
 
-		let testPixel = m_AssetManager.SpriteSheetPixels[positionY * image.width + positionX];
+		let testPixel = Engine.Assets.SpriteSheet.Pixels[positionY * image.width + positionX];
 
 		return testPixel.a == 0;
 	}
@@ -216,11 +213,11 @@ public class Game
 	    let windowSize = Vector2(GetScreenWidth(), GetScreenHeight());
 
 	    float aspectWidth = windowSize.x;
-	    float aspectHeight = aspectWidth / SCREEN_ASPECT_RATIO;
+	    float aspectHeight = aspectWidth / Engine.SCREEN_ASPECT_RATIO;
 	    if (aspectHeight > windowSize.y)
 	    {
 	        aspectHeight = windowSize.y;
-	        aspectWidth = aspectHeight * SCREEN_ASPECT_RATIO;
+	        aspectWidth = aspectHeight * Engine.SCREEN_ASPECT_RATIO;
 	    }
 
 	    return .(aspectWidth, aspectHeight);

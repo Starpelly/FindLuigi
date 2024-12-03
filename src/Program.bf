@@ -6,7 +6,7 @@ namespace FindLuigi;
 
 class Program
 {
-	private static Game game;
+	private static Engine g_Engine;
 
 	public static int Main(String[] args)
 	{
@@ -17,10 +17,11 @@ class Program
 		InitAudioDevice();
 		defer CloseAudioDevice();
 
+		SetExitKey(.KEY_NULL);
 		SetTargetFPS(60);
 
-		game = new Game();
-		defer delete game;
+		g_Engine = new Engine();
+		defer delete g_Engine;
 
 #if BF_PLATFORM_WASM
 		emscripten_set_main_loop(=> emscriptenMainLoop, 0, 1);
@@ -36,8 +37,7 @@ class Program
 
 	private static void update()
 	{
-		game.Update();
-		game.Draw();
+		g_Engine.Loop();
 	}
 
 #if BF_PLATFORM_WASM
