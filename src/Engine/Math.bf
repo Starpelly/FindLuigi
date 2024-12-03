@@ -17,8 +17,8 @@ extension Math
 			return value;
 	}
 
-	public static float Round2Nearest(float a, float interval)
+	public static float Round2Nearest(float value, float interval)
 	{
-		return a - (a % interval);
+		return value - (value % interval);
 	}
 }

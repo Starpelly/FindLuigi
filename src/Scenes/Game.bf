@@ -21,24 +21,18 @@ public class Game : Scene
 	public enum State
 	{
 		STATE_PLAYING,
-		STATE_SUCCESS
+		STATE_FOUND
 	}
 
-	private int m_FaceScale = 2;
+	private State m_CurrentState;
+
 	private const int32 FACE_WIDTH = 32;
 	private const int32 FACE_HEIGHT = 32;
 
+	private const Color BG_PLAYING = .(0, 0, 0, 255);
+	private const Color BG_FOUND = .(255, 231, 66, 255);
+
 	private Vector2 m_MousePositionViewport;
-
-	private int getFaceWidth()
-	{
-		return FACE_WIDTH * m_FaceScale;
-	}
-
-	private int getFaceHeight()
-	{
-		return FACE_HEIGHT * m_FaceScale;
-	}
 
 	private struct Face
 	{
@@ -48,6 +42,18 @@ public class Game : Scene
 
 		public float Speed = 1.5f;
 		public float Angle = 0.0f;
+
+		public float Scale = 2.0f;
+
+		public float GetFaceWidth()
+		{
+			return FACE_WIDTH * Scale;
+		}
+
+		public float GetFaceHeight()
+		{
+			return FACE_HEIGHT * Scale;
+		}
 	}
 
 	private List<Face> m_Faces ~ delete _;
@@ -56,27 +62,32 @@ public class Game : Scene
 	{
 		defer PlayMusicStream(Engine.Assets.Music);
 
-		let faceCount = 10;
+		let faceCount = 30;
 		let luigiIndex = GetRandomValue(0, faceCount - 1);
 
 		m_Faces = new .(faceCount);
 
-		let halfFaceWidth = getFaceWidth() / 2;
-		let halfFaceHeight = getFaceHeight() / 2;
 		for (var i < faceCount)
 		{
-			m_Faces.Add(.() {
+			var newFace = Face() {
 				Sprite =
 					i == luigiIndex ?
 					Sprite.FACE_LUIGI
 					:
 					 (Sprite)GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO),
-				Speed = i == luigiIndex ? 1.54f : 1.5f, // Luigi is slightly faster so he can't get stuck behind another face
-				Position = .(
-					GetRandomValue(0 + (int32)halfFaceWidth, Engine.SCREEN_WIDTH - (int32)halfFaceWidth),
-					GetRandomValue(0 + (int32)halfFaceHeight, Engine.SCREEN_HEIGHT - (int32)halfFaceHeight)),
+				Speed = i == luigiIndex ? 1.54f : 1.5f, // Luigi is slightly faster so he can't get stuck behind another face,
+				Scale = GetRandomValue(1, 2),
 				Angle = GetRandomValue(0, 360)
-			});
+			};
+
+			let halfFaceWidth = newFace.GetFaceWidth() / 2;
+			let halfFaceHeight = newFace.GetFaceHeight() / 2;
+
+			newFace.Position = .(
+					GetRandomValue(0 + (int32)halfFaceWidth, Engine.SCREEN_WIDTH - (int32)halfFaceWidth),
+					GetRandomValue(0 + (int32)halfFaceHeight, Engine.SCREEN_HEIGHT - (int32)halfFaceHeight));
+
+			m_Faces.Add(newFace);
 		}
 
 		// NOTE: We should do a little test to check that Luigi is visible before starting.
@@ -111,25 +122,30 @@ public class Game : Scene
 		EndTextureMode();
 
 		ClearBackground(.(15, 15, 15, 255));
-		DrawTexturePro(m_RenderTextureGame.texture, .(0, 0, m_RenderTextureGame.texture.width, -m_RenderTextureGame.texture.height), .(0, 0, viewportSize.x, viewportSize.y), .(0, 0), 0, WHITE);
+		DrawTexturePro(m_RenderTextureGame.texture, .(0, 0, m_RenderTextureGame.texture.width, -m_RenderTextureGame.texture.height),
+			.(0, 0, viewportSize.x, viewportSize.y),
+			.(0, 0), 0, WHITE);
 	}
 
 	private void drawGame()
 	{
-		ClearBackground(BLACK);
-
-		let faceWidth = getFaceWidth();
-		let faceHeight = getFaceHeight();
-		let halfFaceWidth = faceWidth / 2;
-		let halfFaceHeight = faceHeight / 2;
-
-		let screenMin = Vector2(0 + halfFaceWidth, 0 + halfFaceHeight);
-		let screenMax = Vector2(Engine.SCREEN_WIDTH - halfFaceWidth, Engine.SCREEN_HEIGHT - halfFaceHeight);
+		if (m_CurrentState == .STATE_FOUND)
+			ClearBackground(BG_FOUND);
+		else
+			ClearBackground(BG_PLAYING);
 
 		var hoveringFaceIndex = -1;
 		for (var i < m_Faces.Count)
 		{
 			var face = ref m_Faces[i];
+
+			let faceWidth = face.GetFaceWidth();
+			let faceHeight = face.GetFaceHeight();
+			let halfFaceWidth = faceWidth / 2;
+			let halfFaceHeight = faceHeight / 2;
+
+			let screenMin = Vector2(0 + halfFaceWidth, 0 + halfFaceHeight);
+			let screenMax = Vector2(Engine.SCREEN_WIDTH - halfFaceWidth, Engine.SCREEN_HEIGHT - halfFaceHeight);
 
 			// We first check that the mouse is over the "area" of a face before pixel testing, this is 32 pixels (FACE_WIDTH)
 			if (m_MousePositionViewport.x >= (face.Position.x - halfFaceWidth) && m_MousePositionViewport.x <= (face.Position.x - halfFaceWidth) + faceWidth
@@ -137,8 +153,8 @@ public class Game : Scene
 			{
 				// Pixel testing over the sprite to check if we're over a transparent pixel or not just felt more natural and less
 				// frustrating during play-testing. So that's what we're going with!
-				let mouseImageX = (int)Math.Floor((m_MousePositionViewport.x - face.Position.x + halfFaceWidth) / m_FaceScale);
-				let mouseImageY = (int)Math.Floor((m_MousePositionViewport.y - face.Position.y + halfFaceHeight) / m_FaceScale);
+				let mouseImageX = (int)Math.Floor((m_MousePositionViewport.x - face.Position.x + halfFaceWidth) / face.Scale);
+				let mouseImageY = (int)Math.Floor((m_MousePositionViewport.y - face.Position.y + halfFaceHeight) / face.Scale);
 				let mouseOnTransparentPixel = pixelOnSpriteTransparent((face.Sprite - Sprite.FACE_LUIGI) * FACE_WIDTH, 0, mouseImageX, mouseImageY);
 
 				if (!mouseOnTransparentPixel)
@@ -177,6 +193,7 @@ public class Game : Scene
 				if (face.Sprite == .FACE_LUIGI)
 				{
 					Console.WriteLine("You found Luigi! +5 points!");
+					m_CurrentState = .STATE_FOUND;
 				}
 				else
 				{
@@ -189,6 +206,11 @@ public class Game : Scene
 		for (var i < m_Faces.Count)
 		{
 			var face = m_Faces[i];
+
+			let faceWidth = face.GetFaceWidth();
+			let faceHeight = face.GetFaceHeight();
+			let halfFaceWidth = faceWidth / 2;
+			let halfFaceHeight = faceHeight / 2;
 
 			let faceIndex = (int)face.Sprite - 10;
 			DrawTexturePro(Engine.Assets.SpriteSheet.Texture, .(faceIndex * 32, 0, 32, 32), .(face.Position.x, face.Position.y, faceWidth, faceHeight), .(halfFaceWidth, halfFaceHeight), 0,
@@ -220,7 +242,7 @@ public class Game : Scene
 	        aspectWidth = aspectHeight * Engine.SCREEN_ASPECT_RATIO;
 	    }
 
-	    return .(aspectWidth, aspectHeight);
+	    return .(Math.Round2Nearest(aspectWidth, Engine.SCREEN_WIDTH), Math.Round2Nearest(aspectHeight, Engine.SCREEN_HEIGHT));
 	}
 
 	private Vector2 getCenteredPositionForViewport(Vector2 aspectSize)
