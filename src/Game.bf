@@ -92,7 +92,7 @@ public class Game
 
 	public void Update()
 	{
-		// UpdateMusicStream(m_Music);
+		UpdateMusicStream(m_AssetManager.Music);
 	}
 
 	public void Draw()
@@ -130,10 +130,25 @@ public class Game
 		let screenMax = Vector2(SCREEN_WIDTH - halfFaceWidth, SCREEN_HEIGHT - halfFaceHeight);
 
 		var hoveringFaceIndex = -1;
-		var i = 0;
-		for (var face in ref m_Faces)
+		for (var i < m_Faces.Count)
 		{
-			defer { i++; }
+			var face = ref m_Faces[i];
+
+			// We first check that the mouse is over the "area" of a face before pixel testing, this is 32 pixels (FACE_WIDTH)
+			if (m_MousePositionViewport.x >= (face.Position.x - halfFaceWidth) && m_MousePositionViewport.x <= (face.Position.x - halfFaceWidth) + faceWidth
+				&& m_MousePositionViewport.y >= (face.Position.y - halfFaceHeight) && m_MousePositionViewport.y <= (face.Position.y - halfFaceHeight) + faceHeight)
+			{
+				// Pixel testing over the sprite to check if we're over a transparent pixel or not just felt more natural and less
+				// frustrating during play-testing. So that's what we're going with!
+				let mouseImageX = (int)Math.Floor((m_MousePositionViewport.x - face.Position.x + halfFaceWidth) / m_FaceScale);
+				let mouseImageY = (int)Math.Floor((m_MousePositionViewport.y - face.Position.y + halfFaceHeight) / m_FaceScale);
+				let mouseOnTransparentPixel = pixelOnSpriteTransparent((face.Sprite - Sprite.FACE_LUIGI) * FACE_WIDTH, 0, mouseImageX, mouseImageY);
+
+				if (!mouseOnTransparentPixel)
+				{
+					hoveringFaceIndex = i;
+				}
+			}
 
 			var angleRad = face.Angle * DEG2RAD;
 			let direction = Vector2(Math.Cos(angleRad), Math.Sin(angleRad));
@@ -154,22 +169,11 @@ public class Game
 				face.Angle = -face.Angle;
 				face.Position.y = Math.Clamp(face.Position.y, screenMin.y, screenMax.y);
 			}
-
-			if (face.Sprite == .FACE_LUIGI)
-			{
-			}
-
-			if (m_MousePositionViewport.x >= (face.Position.x - halfFaceWidth) && m_MousePositionViewport.x <= (face.Position.x - halfFaceWidth) + faceWidth
-				&& m_MousePositionViewport.y >= (face.Position.y - halfFaceHeight) && m_MousePositionViewport.y <= (face.Position.y - halfFaceHeight) + faceHeight)
-			{
-				hoveringFaceIndex = i;
-			}
 		}
 
 		if (hoveringFaceIndex >= 0)
 		{
 			var face = m_Faces[hoveringFaceIndex];
-			DrawCircleV(.(face.Position.x, face.Position.y), 48, .(255, 255, 255, 180));
 
 			if (IsMouseButtonPressed(.MOUSE_BUTTON_LEFT))
 			{
@@ -184,11 +188,27 @@ public class Game
 			}
 		}
 
-		for (var face in ref m_Faces)
+		// Actually drawing the faces
+		for (var i < m_Faces.Count)
 		{
+			var face = m_Faces[i];
+
 			let faceIndex = (int)face.Sprite - 10;
-			DrawTexturePro(m_AssetManager.SpriteSheet, .(faceIndex * 32, 0, 32, 32), .(face.Position.x, face.Position.y, faceWidth, faceHeight), .(halfFaceWidth, halfFaceHeight), 0, WHITE);
+			DrawTexturePro(m_AssetManager.SpriteSheet, .(faceIndex * 32, 0, 32, 32), .(face.Position.x, face.Position.y, faceWidth, faceHeight), .(halfFaceWidth, halfFaceHeight), 0,
+				(hoveringFaceIndex == i) ? RED : WHITE);
 		}
+	}
+
+	private bool pixelOnSpriteTransparent(int spriteX, int spriteY, int pixelX, int pixelY)
+	{
+		let image = m_AssetManager.SpriteSheetImage;
+
+		let positionX = spriteX + pixelX;
+		let positionY = spriteY + pixelY;
+
+		let testPixel = m_AssetManager.SpriteSheetPixels[positionY * image.width + positionX];
+
+		return testPixel.a == 0;
 	}
 
 	private Vector2 getLargestSizeForViewport()
