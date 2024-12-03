@@ -7,11 +7,7 @@ namespace FindLuigi;
 
 public class Game
 {
-	private static uint8[?] SpriteSheetData = Compiler.ReadBinary("assets/spritesheet.png");
-	private Texture2D m_SpriteSheet;
-
-	private static uint8[?] MusicData = Compiler.ReadBinary("assets/music.ogg");
-	private Music m_Music;
+	private Assets m_AssetManager ~ delete _;
 
 	private RenderTexture m_RenderTextureGame;
 
@@ -56,14 +52,10 @@ public class Game
 
 	public this()
 	{
-		let spriteSheetImage = LoadImageFromMemory(".png", (char8*)&SpriteSheetData, SpriteSheetData.Count);
-		defer UnloadImage(spriteSheetImage);
-		m_SpriteSheet = LoadTextureFromImage(spriteSheetImage);
+		m_AssetManager = new .();
+		defer PlayMusicStream(m_AssetManager.Music);
 
-		m_Music = LoadMusicStreamFromMemory(".ogg", (char8*)&MusicData, MusicData.Count);
-		defer PlayMusicStream(m_Music);
-
-		let faceCount = 20;
+		let faceCount = 70;
 		let luigiIndex = GetRandomValue(0, faceCount - 1);
 
 		m_Faces = new .(faceCount);
@@ -195,7 +187,7 @@ public class Game
 		for (var face in ref m_Faces)
 		{
 			let faceIndex = (int)face.Sprite - 10;
-			DrawTexturePro(m_SpriteSheet, .(faceIndex * 32, 0, 32, 32), .(face.Position.x, face.Position.y, faceWidth, faceHeight), .(halfFaceWidth, halfFaceHeight), 0, WHITE);
+			DrawTexturePro(m_AssetManager.SpriteSheet, .(faceIndex * 32, 0, 32, 32), .(face.Position.x, face.Position.y, faceWidth, faceHeight), .(halfFaceWidth, halfFaceHeight), 0, WHITE);
 		}
 	}
 
