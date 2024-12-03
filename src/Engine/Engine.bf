@@ -23,7 +23,7 @@ public class Engine
 	{
 		g_Instance = this;
 
-		ChangeScene<FindLuigi.Scenes.Game>();
+		ChangeScene<FindLuigi.Scenes.Init>();
 	}
 
 	public ~this()

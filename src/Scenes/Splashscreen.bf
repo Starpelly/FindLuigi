@@ -5,13 +5,9 @@ namespace FindLuigi.Scenes;
 
 public class Splashscreen : Scene
 {
-	public override void OnLoad()
-	{
-	}
+	public override void OnLoad(){}
 
-	public override void OnUnload()
-	{
-	}
+	public override void OnUnload(){}
 
 	public override void OnUpdate()
 	{

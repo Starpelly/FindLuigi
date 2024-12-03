@@ -18,10 +18,11 @@ public class Assets
 		public Texture2D Texture { get; private set; }
 		public Color* Pixels { get; private set; }
 
-		public this(uint8* pixels, int32 count)
+		public this(uint8* pixels, int32 count, TextureFilter filter = .TEXTURE_FILTER_POINT)
 		{
 			Image = Raylib.LoadImageFromMemory(".png", (char8*)pixels, count);
 			Texture = Raylib.LoadTextureFromImage(Image);
+			Raylib.SetTextureFilter(Texture, filter);
 			Pixels = Raylib.LoadImageColors(Image);
 		}
 
@@ -34,7 +35,7 @@ public class Assets
 	}
 
 	public TextureEx SpriteSheet { get; private set; } = new .(&Data.SpriteSheetData, Data.SpriteSheetData.Count) ~ delete _;
-	public TextureEx BoxsubmusLogo { get; private set; } = new .(&Data.BoxsubmusLogoData, Data.BoxsubmusLogoData.Count) ~ delete _;
+	public TextureEx BoxsubmusLogo { get; private set; } = new .(&Data.BoxsubmusLogoData, Data.BoxsubmusLogoData.Count, .TEXTURE_FILTER_BILINEAR) ~ delete _;
 
 	public Music Music { get; private set; }
 

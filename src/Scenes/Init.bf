@@ -1,10 +1,10 @@
 namespace FindLuigi.Scenes;
 
-public class Title : Scene
+public class Init : Scene
 {
 	public override void OnLoad()
 	{
-		Engine.ChangeScene<Game>();
+		Engine.ChangeScene<Splashscreen>();
 	}
 
 	public override void OnUnload(){}

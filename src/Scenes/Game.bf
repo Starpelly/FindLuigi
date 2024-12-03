@@ -41,6 +41,8 @@ public class Game : Scene
 
 	private uint32 m_CurrentRoomIndex = 0;
 
+	private bool m_MusicMuted = true;
+
 	private struct Face
 	{
 		public Sprite Sprite;
@@ -67,7 +69,11 @@ public class Game : Scene
 
 	public override void OnLoad()
 	{
-		defer PlayMusicStream(Engine.Assets.Music);
+		defer
+		{
+			PlayMusicStream(Engine.Assets.Music);
+			Raylib.SetMusicVolume(Engine.Assets.Music, m_MusicMuted ? 0.0f : 1.0f);
+		}
 
 		m_Faces = new .(1000);
 		startRoom();
@@ -115,7 +121,13 @@ public class Game : Scene
 
 	public override void OnUpdate()
 	{
-		// UpdateMusicStream(m_AssetManager.Music);
+		if (Raylib.IsKeyPressed(.KEY_M))
+		{
+			m_MusicMuted = !m_MusicMuted;
+			Raylib.SetMusicVolume(Engine.Assets.Music, m_MusicMuted ? 0.0f : 1.0f);
+		}
+
+		UpdateMusicStream(Engine.Assets.Music);
 
 		m_TimeSinceStateSwitch += Raylib.GetFrameTime();
 		m_HoveringFaceIndex = -1;
@@ -144,7 +156,14 @@ public class Game : Scene
 
 	public override void OnDraw()
 	{
-		defer DrawFPS(20, 20);
+		defer
+		{
+			DrawFPS(20, 20);
+			if (m_MusicMuted)
+			{
+				DrawText("Music Muted", 20, 40, 20, GREEN);
+			}
+		}
 
 		let viewportSize = getLargestSizeForViewport();
 		let viewportPos = getCenteredPositionForViewport(viewportSize);
