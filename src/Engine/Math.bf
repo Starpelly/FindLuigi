@@ -21,4 +21,9 @@ extension Math
 	{
 		return value - (value % interval);
 	}
+
+	public static float GetTimeFromFrames(int frameCount, float fps = 30.0f)
+	{
+		return (frameCount * 2) / 60.0f;
+	}
 }

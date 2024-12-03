@@ -20,11 +20,13 @@ public class Game : Scene
 
 	public enum State
 	{
+		STATE_LOADING_ROOM,
 		STATE_PLAYING,
 		STATE_FOUND
 	}
 
 	private State m_CurrentState;
+	private float m_TimeSinceStateSwitch;
 
 	private const int32 FACE_WIDTH = 32;
 	private const int32 FACE_HEIGHT = 32;
@@ -32,7 +34,12 @@ public class Game : Scene
 	private const Color BG_PLAYING = .(0, 0, 0, 255);
 	private const Color BG_FOUND = .(255, 231, 66, 255);
 
+	private int m_FoundIndex = 0;
+	private int m_HoveringFaceIndex = 0;
+
 	private Vector2 m_MousePositionViewport;
+
+	private uint32 m_CurrentRoomIndex = 0;
 
 	private struct Face
 	{
@@ -62,10 +69,25 @@ public class Game : Scene
 	{
 		defer PlayMusicStream(Engine.Assets.Music);
 
-		let faceCount = 30;
-		let luigiIndex = GetRandomValue(0, faceCount - 1);
+		m_Faces = new .(1000);
+		startRoom();
 
-		m_Faces = new .(faceCount);
+		// NOTE: We should do a little test to check that Luigi is visible before starting.
+
+		m_RenderTextureGame = LoadRenderTexture(Engine.SCREEN_WIDTH, Engine.SCREEN_HEIGHT);
+	}
+
+	public override void OnUnload()
+	{
+		UnloadRenderTexture(m_RenderTextureGame);
+	}
+
+	private void startRoom()
+	{
+		m_CurrentRoomIndex++;
+
+		let faceCount = m_CurrentRoomIndex;
+		let luigiIndex = (uint32)GetRandomValue(0, (int32)faceCount - 1);
 
 		for (var i < faceCount)
 		{
@@ -76,7 +98,7 @@ public class Game : Scene
 					:
 					 (Sprite)GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO),
 				Speed = i == luigiIndex ? 1.54f : 1.5f, // Luigi is slightly faster so he can't get stuck behind another face,
-				Scale = GetRandomValue(1, 2),
+				Scale = 2,
 				Angle = GetRandomValue(0, 360)
 			};
 
@@ -89,20 +111,35 @@ public class Game : Scene
 
 			m_Faces.Add(newFace);
 		}
-
-		// NOTE: We should do a little test to check that Luigi is visible before starting.
-
-		m_RenderTextureGame = LoadRenderTexture(Engine.SCREEN_WIDTH, Engine.SCREEN_HEIGHT);
-	}
-
-	public override void OnUnload()
-	{
-		UnloadRenderTexture(m_RenderTextureGame);
 	}
 
 	public override void OnUpdate()
 	{
 		// UpdateMusicStream(m_AssetManager.Music);
+
+		m_TimeSinceStateSwitch += Raylib.GetFrameTime();
+		m_HoveringFaceIndex = -1;
+
+		if (m_CurrentState == .STATE_PLAYING)
+		{
+			simulateFaceMovement();
+		}
+		else if (m_CurrentState == .STATE_LOADING_ROOM)
+		{
+			if (m_TimeSinceStateSwitch >= Math.GetTimeFromFrames(12))
+			{
+				switchState(.STATE_PLAYING);
+			}
+		}
+		else if (m_CurrentState == .STATE_FOUND)
+		{
+			if (m_TimeSinceStateSwitch >= Math.GetTimeFromFrames(75))
+			{
+				m_Faces.Clear();
+				switchState(.STATE_LOADING_ROOM);
+				startRoom();
+			}
+		}
 	}
 
 	public override void OnDraw()
@@ -129,12 +166,47 @@ public class Game : Scene
 
 	private void drawGame()
 	{
-		if (m_CurrentState == .STATE_FOUND)
+		if (m_CurrentState == .STATE_FOUND && m_TimeSinceStateSwitch >= Math.GetTimeFromFrames(25))
+		{
 			ClearBackground(BG_FOUND);
+		}
 		else
 			ClearBackground(BG_PLAYING);
 
-		var hoveringFaceIndex = -1;
+		void drawFace(int index, Color color)
+		{
+			var face = m_Faces[index];
+
+			let faceWidth = face.GetFaceWidth();
+			let faceHeight = face.GetFaceHeight();
+			let halfFaceWidth = faceWidth / 2;
+			let halfFaceHeight = faceHeight / 2;
+
+			let faceIndex = (int)face.Sprite - 10;
+			DrawTexturePro(Engine.Assets.SpriteSheet.Texture,
+				.(faceIndex * 32, 0, 32, 32),
+				.(face.Position.x, face.Position.y, faceWidth, faceHeight),
+				.(halfFaceWidth, halfFaceHeight),
+				0,
+				color);
+		}
+
+		if (m_CurrentState == .STATE_PLAYING)
+		{
+			// Actually drawing the faces
+			for (var i < m_Faces.Count)
+			{
+				drawFace(i, (m_HoveringFaceIndex == i) ? RED : WHITE);
+			}
+		}
+		else if (m_CurrentState == .STATE_FOUND)
+		{
+			drawFace(m_FoundIndex, WHITE);
+		}
+	}
+
+	private void simulateFaceMovement()
+	{
 		for (var i < m_Faces.Count)
 		{
 			var face = ref m_Faces[i];
@@ -143,9 +215,6 @@ public class Game : Scene
 			let faceHeight = face.GetFaceHeight();
 			let halfFaceWidth = faceWidth / 2;
 			let halfFaceHeight = faceHeight / 2;
-
-			let screenMin = Vector2(0 + halfFaceWidth, 0 + halfFaceHeight);
-			let screenMax = Vector2(Engine.SCREEN_WIDTH - halfFaceWidth, Engine.SCREEN_HEIGHT - halfFaceHeight);
 
 			// We first check that the mouse is over the "area" of a face before pixel testing, this is 32 pixels (FACE_WIDTH)
 			if (m_MousePositionViewport.x >= (face.Position.x - halfFaceWidth) && m_MousePositionViewport.x <= (face.Position.x - halfFaceWidth) + faceWidth
@@ -159,9 +228,46 @@ public class Game : Scene
 
 				if (!mouseOnTransparentPixel)
 				{
-					hoveringFaceIndex = i;
+					m_HoveringFaceIndex = i;
 				}
 			}
+		}
+
+		// Checks to see if we click and if we do, if we click the correct face
+		// Early returns if we select the correct face so we don't continue simulation
+		if (m_HoveringFaceIndex >= 0)
+		{
+			var face = m_Faces[m_HoveringFaceIndex];
+
+			if (IsMouseButtonPressed(.MOUSE_BUTTON_LEFT))
+			{
+				if (face.Sprite == .FACE_LUIGI)
+				{
+					Console.WriteLine("You found Luigi! +5 points!");
+					switchState(.STATE_FOUND);
+					m_FoundIndex = m_HoveringFaceIndex;
+
+					return; // Early return, we don't want to simulate the game this frame when we've won
+				}
+				else
+				{
+					Console.WriteLine("That's not Luigi! -10 points!");
+				}
+			}
+		}
+
+		// Actual face simulation
+		for (var i < m_Faces.Count)
+		{
+			var face = ref m_Faces[i];
+
+			let faceWidth = face.GetFaceWidth();
+			let faceHeight = face.GetFaceHeight();
+			let halfFaceWidth = faceWidth / 2;
+			let halfFaceHeight = faceHeight / 2;
+
+			let screenMin = Vector2(0 + halfFaceWidth, 0 + halfFaceHeight);
+			let screenMax = Vector2(Engine.SCREEN_WIDTH - halfFaceWidth, Engine.SCREEN_HEIGHT - halfFaceHeight);
 
 			var angleRad = face.Angle * DEG2RAD;
 			let direction = Vector2(Math.Cos(angleRad), Math.Sin(angleRad));
@@ -182,39 +288,6 @@ public class Game : Scene
 				face.Angle = -face.Angle;
 				face.Position.y = Math.Clamp(face.Position.y, screenMin.y, screenMax.y);
 			}
-		}
-
-		if (hoveringFaceIndex >= 0)
-		{
-			var face = m_Faces[hoveringFaceIndex];
-
-			if (IsMouseButtonPressed(.MOUSE_BUTTON_LEFT))
-			{
-				if (face.Sprite == .FACE_LUIGI)
-				{
-					Console.WriteLine("You found Luigi! +5 points!");
-					m_CurrentState = .STATE_FOUND;
-				}
-				else
-				{
-					Console.WriteLine("That's not Luigi! -10 points!");
-				}
-			}
-		}
-
-		// Actually drawing the faces
-		for (var i < m_Faces.Count)
-		{
-			var face = m_Faces[i];
-
-			let faceWidth = face.GetFaceWidth();
-			let faceHeight = face.GetFaceHeight();
-			let halfFaceWidth = faceWidth / 2;
-			let halfFaceHeight = faceHeight / 2;
-
-			let faceIndex = (int)face.Sprite - 10;
-			DrawTexturePro(Engine.Assets.SpriteSheet.Texture, .(faceIndex * 32, 0, 32, 32), .(face.Position.x, face.Position.y, faceWidth, faceHeight), .(halfFaceWidth, halfFaceHeight), 0,
-				(hoveringFaceIndex == i) ? RED : WHITE);
 		}
 	}
 
@@ -253,5 +326,11 @@ public class Game : Scene
 	    float viewportY = (windowSize.y / 2.0f) - (aspectSize.y / 2.0f);
 
 	    return .(viewportX, viewportY);
+	}
+
+	private void switchState(State state)
+	{
+		m_CurrentState = state;
+		m_TimeSinceStateSwitch = 0.0f;
 	}
 }
