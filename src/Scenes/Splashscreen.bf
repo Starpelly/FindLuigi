@@ -62,5 +62,12 @@ public class Splashscreen : Scene
 		{
 			Engine.ChangeScene<Title>();
 		}
+
+#if DEBUG
+		if (Raylib.GetKeyPressed() != 0)
+		{
+			Engine.ChangeScene<Title>();
+		}
+#endif
 	}
 }

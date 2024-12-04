@@ -34,6 +34,17 @@ public class Game : Scene
 
 	private List<Face> m_Faces ~ delete _;
 
+	private float m_LeftSideWidthRatio = 0.75f;
+
+	private Rectangle getLeftSideRect()
+	{
+		return .(0, 0, Raylib.GetScreenWidth() * m_LeftSideWidthRatio, Raylib.GetScreenHeight());
+	}
+	private Rectangle getRightSideRect()
+	{
+		return .(getLeftSideRect().width, 0, Raylib.GetScreenWidth() - getLeftSideRect().width, Raylib.GetScreenHeight());
+	}
+
 	private void loadSimulationTree()
 	{
 #if BF_PLATFORM_WINDOWS		
@@ -170,7 +181,9 @@ public class Game : Scene
 		let viewportSize = getLargestSizeForViewport();
 		let viewportPos = getCenteredPositionForViewport(viewportSize);
 
-		m_MousePositionViewport = .((GetMouseX() / viewportSize.x) * SCREEN_WIDTH, (GetMouseY() / viewportSize.y) * SCREEN_HEIGHT);
+		let relativeMouseX = Raylib.GetMouseX() - viewportPos.x;
+		let relativeMouseY = Raylib.GetMouseY() - viewportPos.y;
+		m_MousePositionViewport = .((relativeMouseX / viewportSize.x) * SCREEN_WIDTH, (relativeMouseY / viewportSize.y) * SCREEN_HEIGHT);
 		m_MousePositionViewport = .(Math.Clamp(m_MousePositionViewport.x, 0, SCREEN_WIDTH), Math.Clamp(m_MousePositionViewport.y, 0, SCREEN_HEIGHT));
 
 		BeginTextureMode(m_RenderTextureGame);
@@ -179,9 +192,16 @@ public class Game : Scene
 		}
 		EndTextureMode();
 
-		ClearBackground(.(15, 15, 15, 255));
+		ClearBackground(Raylib.PINK);
+
+		DrawRectangleRec(getLeftSideRect(), .(15, 15, 15, 255));
+		DrawRectangleRec(getRightSideRect(), .(25, 25, 25, 255));
+		DrawLineEx(.(getRightSideRect().x, getRightSideRect().y), .(getRightSideRect().x, getRightSideRect().height), 2, Raylib.BLACK);
+
+		// DrawTextureEx(Engine.Assets.Wanted.Texture, .(getRightSideRect().x, getRightSideRect().y), 0, 2, Raylib.WHITE);
+
 		DrawTexturePro(m_RenderTextureGame.texture, .(0, 0, m_RenderTextureGame.texture.width, -m_RenderTextureGame.texture.height),
-			.(0, 0, viewportSize.x, viewportSize.y),
+			.(viewportPos.x, viewportPos.y, viewportSize.x, viewportSize.y),
 			.(0, 0), 0, WHITE);
 	}
 
@@ -287,25 +307,27 @@ public class Game : Scene
 
 	private Vector2 getLargestSizeForViewport()
 	{
-	    let windowSize = Vector2(GetScreenWidth(), GetScreenHeight());
+	    // let windowSize = Vector2(GetScreenWidth(), GetScreenHeight());
+		let windowSize = getLeftSideRect();
 
-	    float aspectWidth = windowSize.x;
+	    float aspectWidth = windowSize.width;
 	    float aspectHeight = aspectWidth / SCREEN_ASPECT_RATIO;
-	    if (aspectHeight > windowSize.y)
+	    if (aspectHeight > windowSize.height)
 	    {
-	        aspectHeight = windowSize.y;
+	        aspectHeight = windowSize.height;
 	        aspectWidth = aspectHeight * SCREEN_ASPECT_RATIO;
 	    }
 
-	    return .(Math.Round2Nearest(aspectWidth, BASE_SCREEN_WIDTH), Math.Round2Nearest(aspectHeight, BASE_SCREEN_HEIGHT));
+		return .(Math.Round2Nearest(aspectWidth, BASE_SCREEN_WIDTH), Math.Round2Nearest(aspectHeight, BASE_SCREEN_HEIGHT));
+	    // return .(aspectWidth, aspectHeight);
 	}
 
 	private Vector2 getCenteredPositionForViewport(Vector2 aspectSize)
 	{
-	    let windowSize = Vector2(GetScreenWidth(), GetScreenHeight());
+	    let windowSize = getLeftSideRect();
 
-	    float viewportX = (windowSize.x / 2.0f) - (aspectSize.x / 2.0f);
-	    float viewportY = (windowSize.y / 2.0f) - (aspectSize.y / 2.0f);
+	    float viewportX = (windowSize.width / 2.0f) - (aspectSize.x / 2.0f);
+	    float viewportY = (windowSize.height / 2.0f) - (aspectSize.y / 2.0f);
 
 	    return .(viewportX, viewportY);
 	}

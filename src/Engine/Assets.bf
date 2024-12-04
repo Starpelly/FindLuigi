@@ -7,6 +7,8 @@ public static struct Data
 {
 	public static uint8[?] SpriteSheetData = Compiler.ReadBinary("assets/spritesheet.png");
 	public static uint8[?] BoxsubmusLogoData = Compiler.ReadBinary("assets/boxsubmus-logo.png");
+	public static uint8[?] LogoData = Compiler.ReadBinary("assets/logo.png");
+
 	public static uint8[?] MusicData = Compiler.ReadBinary("assets/music.ogg");
 }
 
@@ -32,10 +34,16 @@ public class Assets
 			Raylib.UnloadTexture(Texture);
 			Raylib.UnloadImageColors(Pixels);
 		}
+
+		public Vector2 Size()
+		{
+			return .(Texture.width, Texture.height);
+		}
 	}
 
 	public TextureEx SpriteSheet { get; private set; } = new .(&Data.SpriteSheetData, Data.SpriteSheetData.Count) ~ delete _;
 	public TextureEx BoxsubmusLogo { get; private set; } = new .(&Data.BoxsubmusLogoData, Data.BoxsubmusLogoData.Count, .TEXTURE_FILTER_BILINEAR) ~ delete _;
+	public TextureEx Logo { get; private set; } = new .(&Data.LogoData, Data.LogoData.Count) ~ delete _;
 
 	public Music Music { get; private set; }
 
