@@ -12,8 +12,12 @@ public class Engine
 	public static float CurrentSceneTime => g_Instance.m_CurrentSceneTime;
 
 	// Constants
-	public const int32 SCREEN_WIDTH = 256 * 2;
-	public const int32 SCREEN_HEIGHT = 192 * 2;
+	public const uint32 BASE_SCREEN_WIDTH = 256;
+	public const uint32 BASE_SCREEN_HEIGHT = 192;
+
+	public const uint32 SCREEN_SCALE = 2;
+	public const uint32 SCREEN_WIDTH = BASE_SCREEN_WIDTH * SCREEN_SCALE;
+	public const uint32 SCREEN_HEIGHT = BASE_SCREEN_HEIGHT * SCREEN_SCALE;
 	public const float SCREEN_ASPECT_RATIO = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
 
 	// Globals

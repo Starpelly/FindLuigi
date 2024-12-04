@@ -3,20 +3,13 @@ using System.Collections;
 using RaylibBeef;
 using static RaylibBeef.Raylib;
 
+using FindLuigi.Game;
+
 namespace FindLuigi.Scenes;
 
 public class Game : Scene
 {
 	private RenderTexture m_RenderTextureGame;
-
-	private enum Sprite
-	{
-		// Nice that these line up, looks nice :)
-		FACE_LUIGI = 10,
-		FACE_MARIO,
-		FACE_YOSHI,
-		FACE_WARIO
-	}
 
 	public enum State
 	{
@@ -28,11 +21,7 @@ public class Game : Scene
 	private State m_CurrentState;
 	private float m_TimeSinceStateSwitch;
 
-	private const int32 FACE_WIDTH = 32;
-	private const int32 FACE_HEIGHT = 32;
-
-	private const Color BG_PLAYING = .(0, 0, 0, 255);
-	private const Color BG_FOUND = .(255, 231, 66, 255);
+	private Simulation m_CurrentRoomType = null ~ delete _;
 
 	private int m_FoundIndex = 0;
 	private int m_HoveringFaceIndex = 0;
@@ -43,29 +32,12 @@ public class Game : Scene
 
 	private bool m_MusicMuted = true;
 
-	private struct Face
-	{
-		public Sprite Sprite;
-
-		public Vector2 Position;
-
-		public float Speed = 1.5f;
-		public float Angle = 0.0f;
-
-		public float Scale = 2.0f;
-
-		public float GetFaceWidth()
-		{
-			return FACE_WIDTH * Scale;
-		}
-
-		public float GetFaceHeight()
-		{
-			return FACE_HEIGHT * Scale;
-		}
-	}
-
 	private List<Face> m_Faces ~ delete _;
+
+	private void loadSimulation()
+	{
+		startRoom<FindLuigi.Game.Simulations.BasicGrid>();
+	}
 
 	public override void OnLoad()
 	{
@@ -76,7 +48,7 @@ public class Game : Scene
 		}
 
 		m_Faces = new .(1000);
-		startRoom();
+		loadSimulation();
 
 		// NOTE: We should do a little test to check that Luigi is visible before starting.
 
@@ -88,12 +60,16 @@ public class Game : Scene
 		UnloadRenderTexture(m_RenderTextureGame);
 	}
 
-	private void startRoom()
+	private void startRoom<T>() where T : Simulation
 	{
 		m_CurrentRoomIndex++;
 
-		let faceCount = m_CurrentRoomIndex;
+		let faceCount = 4;
 		let luigiIndex = (uint32)GetRandomValue(0, (int32)faceCount - 1);
+
+		if (m_CurrentRoomType != null)
+			DeleteAndNullify!(m_CurrentRoomType);
+		m_CurrentRoomType = new T();
 
 		for (var i < faceCount)
 		{
@@ -102,21 +78,12 @@ public class Game : Scene
 					i == luigiIndex ?
 					Sprite.FACE_LUIGI
 					:
-					 (Sprite)GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO),
-				Speed = i == luigiIndex ? 1.54f : 1.5f, // Luigi is slightly faster so he can't get stuck behind another face,
-				Scale = 2,
-				Angle = GetRandomValue(0, 360)
+					 (Sprite)GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO)
 			};
-
-			let halfFaceWidth = newFace.GetFaceWidth() / 2;
-			let halfFaceHeight = newFace.GetFaceHeight() / 2;
-
-			newFace.Position = .(
-					GetRandomValue(0 + (int32)halfFaceWidth, Engine.SCREEN_WIDTH - (int32)halfFaceWidth),
-					GetRandomValue(0 + (int32)halfFaceHeight, Engine.SCREEN_HEIGHT - (int32)halfFaceHeight));
 
 			m_Faces.Add(newFace);
 		}
+		m_CurrentRoomType.Setup(luigiIndex, ref m_Faces);
 	}
 
 	public override void OnUpdate()
@@ -149,7 +116,7 @@ public class Game : Scene
 			{
 				m_Faces.Clear();
 				switchState(.STATE_LOADING_ROOM);
-				startRoom();
+				loadSimulation();
 			}
 		}
 	}
@@ -190,7 +157,9 @@ public class Game : Scene
 			ClearBackground(BG_FOUND);
 		}
 		else
+		{	
 			ClearBackground(BG_PLAYING);
+		}
 
 		void drawFace(int index, Color color)
 		{
@@ -198,8 +167,8 @@ public class Game : Scene
 
 			let faceWidth = face.GetFaceWidth();
 			let faceHeight = face.GetFaceHeight();
-			let halfFaceWidth = faceWidth / 2;
-			let halfFaceHeight = faceHeight / 2;
+			let halfFaceWidth = face.GetHalfFaceWidth();
+			let halfFaceHeight = face.GetHalfFaceHeight();
 
 			let faceIndex = (int)face.Sprite - 10;
 			DrawTexturePro(Engine.Assets.SpriteSheet.Texture,
@@ -232,8 +201,8 @@ public class Game : Scene
 
 			let faceWidth = face.GetFaceWidth();
 			let faceHeight = face.GetFaceHeight();
-			let halfFaceWidth = faceWidth / 2;
-			let halfFaceHeight = faceHeight / 2;
+			let halfFaceWidth = face.GetHalfFaceWidth();
+			let halfFaceHeight = face.GetHalfFaceHeight();
 
 			// We first check that the mouse is over the "area" of a face before pixel testing, this is 32 pixels (FACE_WIDTH)
 			if (m_MousePositionViewport.x >= (face.Position.x - halfFaceWidth) && m_MousePositionViewport.x <= (face.Position.x - halfFaceWidth) + faceWidth
@@ -241,9 +210,10 @@ public class Game : Scene
 			{
 				// Pixel testing over the sprite to check if we're over a transparent pixel or not just felt more natural and less
 				// frustrating during play-testing. So that's what we're going with!
-				let mouseImageX = (int)Math.Floor((m_MousePositionViewport.x - face.Position.x + halfFaceWidth) / face.Scale);
-				let mouseImageY = (int)Math.Floor((m_MousePositionViewport.y - face.Position.y + halfFaceHeight) / face.Scale);
-				let mouseOnTransparentPixel = pixelOnSpriteTransparent((face.Sprite - Sprite.FACE_LUIGI) * FACE_WIDTH, 0, mouseImageX, mouseImageY);
+				// NOTE: Replace with sprite properties instead (create a manager for that, eventually!)
+				let mouseImageX = (int)(Math.Floor((m_MousePositionViewport.x - face.Position.x + halfFaceWidth) / (float)FACE_SCALE) / face.Scale);
+				let mouseImageY = (int)(Math.Floor((m_MousePositionViewport.y - face.Position.y + halfFaceHeight) / (float)FACE_SCALE) / face.Scale);
+				let mouseOnTransparentPixel = pixelOnSpriteTransparent((face.Sprite - Sprite.FACE_LUIGI) * (FACE_WIDTH / FACE_SCALE), 0, mouseImageX, mouseImageY);
 
 				if (!mouseOnTransparentPixel)
 				{
@@ -276,38 +246,7 @@ public class Game : Scene
 		}
 
 		// Actual face simulation
-		for (var i < m_Faces.Count)
-		{
-			var face = ref m_Faces[i];
-
-			let faceWidth = face.GetFaceWidth();
-			let faceHeight = face.GetFaceHeight();
-			let halfFaceWidth = faceWidth / 2;
-			let halfFaceHeight = faceHeight / 2;
-
-			let screenMin = Vector2(0 + halfFaceWidth, 0 + halfFaceHeight);
-			let screenMax = Vector2(Engine.SCREEN_WIDTH - halfFaceWidth, Engine.SCREEN_HEIGHT - halfFaceHeight);
-
-			var angleRad = face.Angle * DEG2RAD;
-			let direction = Vector2(Math.Cos(angleRad), Math.Sin(angleRad));
-
-			face.Position.x += direction.x * face.Speed;
-			face.Position.y += direction.y * face.Speed;
-
-			bool faceOutsideX() => face.Position.x > screenMax.x || face.Position.x < screenMin.x;
-			bool faceOutsideY() => face.Position.y > screenMax.y || face.Position.y < screenMin.y;
-
-			if (faceOutsideX())
-			{
-				face.Angle = 180.0f - face.Angle;
-				face.Position.x = Math.Clamp(face.Position.x, screenMin.x, screenMax.x);
-			}
-			if (faceOutsideY())
-			{
-				face.Angle = -face.Angle;
-				face.Position.y = Math.Clamp(face.Position.y, screenMin.y, screenMax.y);
-			}
-		}
+		m_CurrentRoomType.Simulate(ref m_Faces);
 	}
 
 	private bool pixelOnSpriteTransparent(int spriteX, int spriteY, int pixelX, int pixelY)
@@ -334,7 +273,7 @@ public class Game : Scene
 	        aspectWidth = aspectHeight * Engine.SCREEN_ASPECT_RATIO;
 	    }
 
-	    return .(Math.Round2Nearest(aspectWidth, Engine.SCREEN_WIDTH), Math.Round2Nearest(aspectHeight, Engine.SCREEN_HEIGHT));
+	    return .(Math.Round2Nearest(aspectWidth, Engine.BASE_SCREEN_WIDTH), Math.Round2Nearest(aspectHeight, Engine.BASE_SCREEN_HEIGHT));
 	}
 
 	private Vector2 getCenteredPositionForViewport(Vector2 aspectSize)

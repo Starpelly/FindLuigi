@@ -4,7 +4,7 @@ public class Init : Scene
 {
 	public override void OnLoad()
 	{
-		Engine.ChangeScene<Splashscreen>();
+		Engine.ChangeScene<Title>();
 	}
 
 	public override void OnUnload(){}
