@@ -44,6 +44,16 @@ public class Engine
 		defer RaylibBeef.Raylib.EndDrawing();
 
 		m_CurrentScene.OnDraw();
+
+		{
+			defer
+			{
+				Raylib.DrawFPS(20, 20);
+			}
+			Raylib.HideCursor();
+			Raylib.DrawCircle(Raylib.GetMouseX(), Raylib.GetMouseY(), 12, Raylib.BLACK);
+			Raylib.DrawCircle(Raylib.GetMouseX(), Raylib.GetMouseY(), 8, Raylib.WHITE);
+		}
 	}
 
 	public static void ChangeScene<T>() where T : Scene
@@ -57,5 +67,17 @@ public class Engine
 		}
 		g_Instance.m_CurrentScene = new T();
 		g_Instance.m_CurrentScene.OnLoad();
+	}
+
+	public static bool PixelOnSpriteTransparent(int spriteX, int spriteY, int pixelX, int pixelY)
+	{
+		let image = Engine.Assets.SpriteSheet.Image;
+
+		let positionX = spriteX + pixelX;
+		let positionY = spriteY + pixelY;
+
+		let testPixel = Engine.Assets.SpriteSheet.Pixels[positionY * image.width + positionX];
+
+		return testPixel.a == 0;
 	}
 }

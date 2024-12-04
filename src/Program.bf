@@ -10,7 +10,7 @@ class Program
 
 	public static int Main(String[] args)
 	{
-		SetConfigFlags(.FLAG_WINDOW_RESIZABLE);
+		SetConfigFlags(ConfigFlags.FLAG_WINDOW_RESIZABLE);
 		InitWindow(1280, 768, "Find Luigi");
 		defer CloseWindow();
 

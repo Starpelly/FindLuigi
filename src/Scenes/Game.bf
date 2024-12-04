@@ -34,42 +34,55 @@ public class Game : Scene
 
 	private List<Face> m_Faces ~ delete _;
 
-	private void loadSimulation()
+	private void loadSimulationTree()
 	{
-		startRoom<FindLuigi.Game.Simulations.BasicGrid>();
-	}
-
-	public override void OnLoad()
-	{
-		defer
 		{
-			PlayMusicStream(Engine.Assets.Music);
-			Raylib.SetMusicVolume(Engine.Assets.Music, m_MusicMuted ? 0.0f : 1.0f);
+			let simulation = new FindLuigi.Game.Simulations.DVDScreenSaver();
+			simulation.NoMove = false;
+
+			startRoom(82, simulation);
 		}
 
-		m_Faces = new .(1000);
-		loadSimulation();
+		return;
 
-		// NOTE: We should do a little test to check that Luigi is visible before starting.
+		if (m_CurrentRoomIndex < 3)
+		{
+			var faceCount = 4;
+			switch (m_CurrentRoomIndex)
+			{
+			case 0: faceCount = 4; break;
+			case 1: faceCount = 16; break;
+			case 2: faceCount = 48; break;
+			}
 
-		m_RenderTextureGame = LoadRenderTexture(Engine.SCREEN_WIDTH, Engine.SCREEN_HEIGHT);
+			let simulation = new FindLuigi.Game.Simulations.BasicGrid();
+			startRoom(faceCount, simulation);
+		}
+		else if (m_CurrentRoomIndex < 10)
+		{
+			let simulation = new FindLuigi.Game.Simulations.DVDScreenSaver();
+			simulation.NoMove = true;
+
+			startRoom(64, simulation);
+		}
+		else
+		{
+			let simulation = new FindLuigi.Game.Simulations.DVDScreenSaver();
+
+			startRoom(16, simulation);
+		}
 	}
 
-	public override void OnUnload()
-	{
-		UnloadRenderTexture(m_RenderTextureGame);
-	}
-
-	private void startRoom<T>() where T : Simulation
+	
+	private void startRoom(int faceCount, Simulation simulation)
 	{
 		m_CurrentRoomIndex++;
 
-		let faceCount = 4;
 		let luigiIndex = (uint32)GetRandomValue(0, (int32)faceCount - 1);
 
 		if (m_CurrentRoomType != null)
 			DeleteAndNullify!(m_CurrentRoomType);
-		m_CurrentRoomType = new T();
+		m_CurrentRoomType = simulation;
 
 		for (var i < faceCount)
 		{
@@ -84,6 +97,27 @@ public class Game : Scene
 			m_Faces.Add(newFace);
 		}
 		m_CurrentRoomType.Setup(luigiIndex, ref m_Faces);
+	}
+
+	public override void OnLoad()
+	{
+		defer
+		{
+			PlayMusicStream(Engine.Assets.Music);
+			Raylib.SetMusicVolume(Engine.Assets.Music, m_MusicMuted ? 0.0f : 1.0f);
+		}
+
+		m_Faces = new .(1000);
+		loadSimulationTree();
+
+		// NOTE: We should do a little test to check that Luigi is visible before starting.
+
+		m_RenderTextureGame = LoadRenderTexture(Engine.SCREEN_WIDTH, Engine.SCREEN_HEIGHT);
+	}
+
+	public override void OnUnload()
+	{
+		UnloadRenderTexture(m_RenderTextureGame);
 	}
 
 	public override void OnUpdate()
@@ -116,7 +150,7 @@ public class Game : Scene
 			{
 				m_Faces.Clear();
 				switchState(.STATE_LOADING_ROOM);
-				loadSimulation();
+				loadSimulationTree();
 			}
 		}
 	}
@@ -125,7 +159,6 @@ public class Game : Scene
 	{
 		defer
 		{
-			DrawFPS(20, 20);
 			if (m_MusicMuted)
 			{
 				DrawText("Music Muted", 20, 40, 20, GREEN);
@@ -213,7 +246,7 @@ public class Game : Scene
 				// NOTE: Replace with sprite properties instead (create a manager for that, eventually!)
 				let mouseImageX = (int)(Math.Floor((m_MousePositionViewport.x - face.Position.x + halfFaceWidth) / (float)FACE_SCALE) / face.Scale);
 				let mouseImageY = (int)(Math.Floor((m_MousePositionViewport.y - face.Position.y + halfFaceHeight) / (float)FACE_SCALE) / face.Scale);
-				let mouseOnTransparentPixel = pixelOnSpriteTransparent((face.Sprite - Sprite.FACE_LUIGI) * (FACE_WIDTH / FACE_SCALE), 0, mouseImageX, mouseImageY);
+				let mouseOnTransparentPixel = Engine.PixelOnSpriteTransparent((face.Sprite - Sprite.FACE_LUIGI) * (FACE_WIDTH / FACE_SCALE), 0, mouseImageX, mouseImageY);
 
 				if (!mouseOnTransparentPixel)
 				{
@@ -247,18 +280,6 @@ public class Game : Scene
 
 		// Actual face simulation
 		m_CurrentRoomType.Simulate(ref m_Faces);
-	}
-
-	private bool pixelOnSpriteTransparent(int spriteX, int spriteY, int pixelX, int pixelY)
-	{
-		let image = Engine.Assets.SpriteSheet.Image;
-
-		let positionX = spriteX + pixelX;
-		let positionY = spriteY + pixelY;
-
-		let testPixel = Engine.Assets.SpriteSheet.Pixels[positionY * image.width + positionX];
-
-		return testPixel.a == 0;
 	}
 
 	private Vector2 getLargestSizeForViewport()

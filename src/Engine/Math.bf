@@ -1,3 +1,5 @@
+using RaylibBeef;
+
 namespace System;
 
 extension Math
@@ -17,13 +19,23 @@ extension Math
 			return value;
 	}
 
-	public static float Round2Nearest(float value, float interval)
+	public static float Round2Nearest(float val, float interval)
 	{
-		return value - (value % interval);
+		return val - (val % interval);
 	}
 
 	public static float GetTimeFromFrames(int frameCount, float fps = 30.0f)
 	{
 		return (frameCount * 2) / 60.0f;
+	}
+
+	public static bool IsWithin(float val, float min, float max)
+	{
+		return val >= min && val <= max;
+	}
+
+	public static bool IsWithin(Vector2 val, Vector2 min, Vector2 max)
+	{
+		return IsWithin(val.x, min.x, max.x) && IsWithin(val.y, min.y, max.y);
 	}
 }
