@@ -25,8 +25,8 @@ public class DVDScreenSaver : Simulation
 		// Also, at about 130-ish, there isn't enough room for full visibility. But it's probably fine.
 		void moveRandomPos(ref Face face)
 		{
-			let gridWidth = Engine.SCREEN_WIDTH / HALF_FACE_WIDTH;
-			let gridHeight = Engine.SCREEN_HEIGHT / HALF_FACE_HEIGHT;
+			let gridWidth = SCREEN_WIDTH / HALF_FACE_WIDTH;
+			let gridHeight = SCREEN_HEIGHT / HALF_FACE_HEIGHT;
 
 			var randGridX = 0;
 			var randGridY = 0;
@@ -66,8 +66,8 @@ public class DVDScreenSaver : Simulation
 			face.Position.x = randGridX * HALF_FACE_WIDTH;
 			face.Position.y = randGridY * HALF_FACE_HEIGHT;
 
-			face.Position.x += Raylib.GetRandomValue(-2, 2) * Engine.SCREEN_SCALE;
-			face.Position.y += Raylib.GetRandomValue(-2, 2) * Engine.SCREEN_SCALE;
+			face.Position.x += Raylib.GetRandomValue(-2, 2) * SCREEN_SCALE;
+			face.Position.y += Raylib.GetRandomValue(-2, 2) * SCREEN_SCALE;
 
 			// face.Position.x = Math.Clamp(face.Position.x, face.GetHalfFaceWidth(), Engine.SCREEN_WIDTH - face.GetHalfFaceWidth());
 			// face.Position.y = Math.Clamp(face.Position.y, face.GetHalfFaceHeight(), Engine.SCREEN_HEIGHT - face.GetHalfFaceHeight());
@@ -96,7 +96,7 @@ public class DVDScreenSaver : Simulation
 			let halfFaceHeight = face.GetHalfFaceHeight();
 
 			let screenMin = Vector2(0 + halfFaceWidth, 0 + halfFaceHeight);
-			let screenMax = Vector2(Engine.SCREEN_WIDTH - halfFaceWidth, Engine.SCREEN_HEIGHT - halfFaceHeight);
+			let screenMax = Vector2(SCREEN_WIDTH - halfFaceWidth, SCREEN_HEIGHT - halfFaceHeight);
 
 			var angleRad = face.Angle * Raylib.DEG2RAD;
 			let direction = Vector2(Math.Cos(angleRad), Math.Sin(angleRad));

@@ -4,7 +4,15 @@ namespace FindLuigi.Game;
 
 static
 {
-	public const uint8 FACE_SCALE = Engine.SCREEN_SCALE;
+	public const uint32 BASE_SCREEN_WIDTH = 256;
+	public const uint32 BASE_SCREEN_HEIGHT = 192;
+
+	public const uint32 SCREEN_SCALE = 2;
+	public const uint32 SCREEN_WIDTH = BASE_SCREEN_WIDTH * SCREEN_SCALE;
+	public const uint32 SCREEN_HEIGHT = BASE_SCREEN_HEIGHT * SCREEN_SCALE;
+	public const float SCREEN_ASPECT_RATIO = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
+
+	public const uint8 FACE_SCALE = SCREEN_SCALE;
 	public const uint32 FACE_WIDTH = 32 * FACE_SCALE;
 	public const uint32 FACE_HEIGHT = 32 * FACE_SCALE;
 

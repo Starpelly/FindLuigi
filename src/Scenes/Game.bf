@@ -36,6 +36,7 @@ public class Game : Scene
 
 	private void loadSimulationTree()
 	{
+#if BF_PLATFORM_WINDOWS		
 		{
 			let simulation = new FindLuigi.Game.Simulations.DVDScreenSaver();
 			simulation.NoMove = false;
@@ -44,6 +45,7 @@ public class Game : Scene
 		}
 
 		return;
+#endif
 
 		if (m_CurrentRoomIndex < 3)
 		{
@@ -88,7 +90,7 @@ public class Game : Scene
 		{
 			var newFace = Face() {
 				Sprite =
-					i == luigiIndex ?
+					i == (int)luigiIndex ?
 					Sprite.FACE_LUIGI
 					:
 					 (Sprite)GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO)
@@ -96,7 +98,7 @@ public class Game : Scene
 
 			m_Faces.Add(newFace);
 		}
-		m_CurrentRoomType.Setup(luigiIndex, ref m_Faces);
+		m_CurrentRoomType.Setup((int)luigiIndex, ref m_Faces);
 	}
 
 	public override void OnLoad()
@@ -112,7 +114,7 @@ public class Game : Scene
 
 		// NOTE: We should do a little test to check that Luigi is visible before starting.
 
-		m_RenderTextureGame = LoadRenderTexture(Engine.SCREEN_WIDTH, Engine.SCREEN_HEIGHT);
+		m_RenderTextureGame = LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
 	}
 
 	public override void OnUnload()
@@ -168,8 +170,8 @@ public class Game : Scene
 		let viewportSize = getLargestSizeForViewport();
 		let viewportPos = getCenteredPositionForViewport(viewportSize);
 
-		m_MousePositionViewport = .((GetMouseX() / viewportSize.x) * Engine.SCREEN_WIDTH, (GetMouseY() / viewportSize.y) * Engine.SCREEN_HEIGHT);
-		m_MousePositionViewport = .(Math.Clamp(m_MousePositionViewport.x, 0, Engine.SCREEN_WIDTH), Math.Clamp(m_MousePositionViewport.y, 0, Engine.SCREEN_HEIGHT));
+		m_MousePositionViewport = .((GetMouseX() / viewportSize.x) * SCREEN_WIDTH, (GetMouseY() / viewportSize.y) * SCREEN_HEIGHT);
+		m_MousePositionViewport = .(Math.Clamp(m_MousePositionViewport.x, 0, SCREEN_WIDTH), Math.Clamp(m_MousePositionViewport.y, 0, SCREEN_HEIGHT));
 
 		BeginTextureMode(m_RenderTextureGame);
 		{
@@ -265,7 +267,8 @@ public class Game : Scene
 			{
 				if (face.Sprite == .FACE_LUIGI)
 				{
-					Console.WriteLine("You found Luigi! +5 points!");
+					Engine.ConsoleLog("You found Luigi! +5 points!");
+
 					switchState(.STATE_FOUND);
 					m_FoundIndex = m_HoveringFaceIndex;
 
@@ -273,7 +276,7 @@ public class Game : Scene
 				}
 				else
 				{
-					Console.WriteLine("That's not Luigi! -10 points!");
+					Engine.ConsoleLog("That's not Luigi! -10 points!");
 				}
 			}
 		}
@@ -287,14 +290,14 @@ public class Game : Scene
 	    let windowSize = Vector2(GetScreenWidth(), GetScreenHeight());
 
 	    float aspectWidth = windowSize.x;
-	    float aspectHeight = aspectWidth / Engine.SCREEN_ASPECT_RATIO;
+	    float aspectHeight = aspectWidth / SCREEN_ASPECT_RATIO;
 	    if (aspectHeight > windowSize.y)
 	    {
 	        aspectHeight = windowSize.y;
-	        aspectWidth = aspectHeight * Engine.SCREEN_ASPECT_RATIO;
+	        aspectWidth = aspectHeight * SCREEN_ASPECT_RATIO;
 	    }
 
-	    return .(Math.Round2Nearest(aspectWidth, Engine.BASE_SCREEN_WIDTH), Math.Round2Nearest(aspectHeight, Engine.BASE_SCREEN_HEIGHT));
+	    return .(Math.Round2Nearest(aspectWidth, BASE_SCREEN_WIDTH), Math.Round2Nearest(aspectHeight, BASE_SCREEN_HEIGHT));
 	}
 
 	private Vector2 getCenteredPositionForViewport(Vector2 aspectSize)

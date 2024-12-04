@@ -1,24 +1,37 @@
 using RaylibBeef;
+using System;
 
 namespace FindLuigi;
 
 public class Engine
 {
-	private Assets m_AssetManager = new .() ~ delete _;
+#if BF_PLATFORM_WASM
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern void emscripten_console_log(char8* utf8String);
+
+	private function void em_callback_func();
+
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern void emscripten_set_main_loop(em_callback_func func, int32 fps, int32 simulateInfinteLoop);
+
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern int32 emscripten_set_main_loop_timing(int32 mode, int32 value);
+
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern double emscripten_get_now();
+
+	private static void emscriptenMainLoop()
+	{
+		update();
+	}
+#endif
+
+	private Assets m_AssetManager ~ delete _;
 	public static Assets Assets => g_Instance.m_AssetManager;
 
 	private Scene m_CurrentScene = null ~ delete _;
 	private float m_CurrentSceneTime = 0.0f;
 	public static float CurrentSceneTime => g_Instance.m_CurrentSceneTime;
-
-	// Constants
-	public const uint32 BASE_SCREEN_WIDTH = 256;
-	public const uint32 BASE_SCREEN_HEIGHT = 192;
-
-	public const uint32 SCREEN_SCALE = 2;
-	public const uint32 SCREEN_WIDTH = BASE_SCREEN_WIDTH * SCREEN_SCALE;
-	public const uint32 SCREEN_HEIGHT = BASE_SCREEN_HEIGHT * SCREEN_SCALE;
-	public const float SCREEN_ASPECT_RATIO = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
 
 	// Globals
 	private static Engine g_Instance { get; private set; }
@@ -26,8 +39,6 @@ public class Engine
 	public this()
 	{
 		g_Instance = this;
-
-		ChangeScene<FindLuigi.Scenes.Init>();
 	}
 
 	public ~this()
@@ -35,7 +46,33 @@ public class Engine
 		g_Instance.m_CurrentScene.OnUnload();
 	}
 
-	public void Loop()
+	public void Run()
+	{
+		Raylib.SetConfigFlags(ConfigFlags.FLAG_WINDOW_RESIZABLE);
+		Raylib.InitWindow(1280, 768, "Find Luigi");
+		defer Raylib.CloseWindow();
+
+		Raylib.InitAudioDevice();
+		defer Raylib.CloseAudioDevice();
+
+		Raylib.SetExitKey(.KEY_NULL);
+		Raylib.SetTargetFPS(60);
+
+		m_AssetManager = new .();
+
+		ChangeScene<FindLuigi.Scenes.Init>();
+
+#if BF_PLATFORM_WASM
+		emscripten_set_main_loop(=> emscriptenMainLoop, 0, 1);
+#else 
+		while (!Raylib.WindowShouldClose())
+		{
+			loop();
+		}
+#endif
+	}
+
+	private void loop()
 	{
 		m_CurrentSceneTime += Raylib.GetFrameTime();
 		m_CurrentScene.OnUpdate();
@@ -43,17 +80,18 @@ public class Engine
 		RaylibBeef.Raylib.BeginDrawing();
 		defer RaylibBeef.Raylib.EndDrawing();
 
-		m_CurrentScene.OnDraw();
-
+		defer
 		{
-			defer
-			{
-				Raylib.DrawFPS(20, 20);
-			}
+			Raylib.DrawFPS(20, 20);
+
+			/*
 			Raylib.HideCursor();
-			Raylib.DrawCircle(Raylib.GetMouseX(), Raylib.GetMouseY(), 12, Raylib.BLACK);
+			Raylib.DrawCircle(Raylib.GetMouseX(), Raylib.GetMouseY(), 10, Raylib.BLACK);
 			Raylib.DrawCircle(Raylib.GetMouseX(), Raylib.GetMouseY(), 8, Raylib.WHITE);
+			*/
 		}
+
+		m_CurrentScene.OnDraw();
 	}
 
 	public static void ChangeScene<T>() where T : Scene
@@ -79,5 +117,16 @@ public class Engine
 		let testPixel = Engine.Assets.SpriteSheet.Pixels[positionY * image.width + positionX];
 
 		return testPixel.a == 0;
+	}
+
+	public static void ConsoleLog(StringView line)
+	{
+#if DEBUG
+#if BF_PLATFORM_WINDOWS
+		Console.WriteLine(line);
+#elif BF_PLATFORM_WASM
+		emscripten_console_log(line.ToScopeCStr!());
+#endif
+#endif
 	}
 }
