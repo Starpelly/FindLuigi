@@ -70,4 +70,5 @@ public class Splashscreen : Scene
 		}
 #endif
 	}
+	public override void OnWindowResize(){}
 }

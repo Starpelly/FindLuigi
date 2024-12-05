@@ -33,6 +33,8 @@ public class Engine
 	private float m_CurrentSceneTime = 0.0f;
 	public static float CurrentSceneTime => g_Instance.m_CurrentSceneTime;
 
+	private Vector2 m_LastWindowSize;
+
 	// Globals
 	private static Engine g_Instance { get; private set; }
 
@@ -74,6 +76,12 @@ public class Engine
 
 	private void loop()
 	{
+		if (Raylib.GetScreenWidth() != m_LastWindowSize.x || Raylib.GetScreenHeight() != m_LastWindowSize.y)
+		{
+			m_CurrentScene.OnWindowResize();
+		}
+		m_LastWindowSize = .(Raylib.GetScreenWidth(), Raylib.GetScreenHeight());
+
 		m_CurrentSceneTime += Raylib.GetFrameTime();
 		m_CurrentScene.OnUpdate();
 

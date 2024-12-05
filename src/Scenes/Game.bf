@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using RaylibBeef;
-using static RaylibBeef.Raylib;
 
 using FindLuigi.Game;
 
@@ -10,6 +9,11 @@ namespace FindLuigi.Scenes;
 public class Game : Scene
 {
 	private RenderTexture m_RenderTextureGame;
+	private RenderTexture m_RenderTextureScore;
+
+	private float m_Timer = 10;
+	private int CeilTimer() => (int)Math.Ceiling(m_Timer);
+	private int m_LastCeilTime = -1;
 
 	public enum State
 	{
@@ -47,6 +51,7 @@ public class Game : Scene
 
 	private void loadSimulationTree()
 	{
+		/*
 #if BF_PLATFORM_WINDOWS		
 		{
 			let simulation = new FindLuigi.Game.Simulations.DVDScreenSaver();
@@ -57,6 +62,7 @@ public class Game : Scene
 
 		return;
 #endif
+		*/
 
 		if (m_CurrentRoomIndex < 3)
 		{
@@ -69,29 +75,28 @@ public class Game : Scene
 			}
 
 			let simulation = new FindLuigi.Game.Simulations.BasicGrid();
-			startRoom(faceCount, simulation);
+			startLevel(faceCount, simulation);
 		}
 		else if (m_CurrentRoomIndex < 10)
 		{
 			let simulation = new FindLuigi.Game.Simulations.DVDScreenSaver();
 			simulation.NoMove = true;
 
-			startRoom(64, simulation);
+			startLevel(64, simulation);
 		}
 		else
 		{
 			let simulation = new FindLuigi.Game.Simulations.DVDScreenSaver();
 
-			startRoom(16, simulation);
+			startLevel(16, simulation);
 		}
 	}
-
 	
-	private void startRoom(int faceCount, Simulation simulation)
+	private void startLevel(int faceCount, Simulation simulation)
 	{
 		m_CurrentRoomIndex++;
 
-		let luigiIndex = (uint32)GetRandomValue(0, (int32)faceCount - 1);
+		let luigiIndex = (uint32)Raylib.GetRandomValue(0, (int32)faceCount - 1);
 
 		if (m_CurrentRoomType != null)
 			DeleteAndNullify!(m_CurrentRoomType);
@@ -104,7 +109,7 @@ public class Game : Scene
 					i == (int)luigiIndex ?
 					Sprite.FACE_LUIGI
 					:
-					 (Sprite)GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO)
+					 (Sprite)Raylib.GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO)
 			};
 
 			m_Faces.Add(newFace);
@@ -116,7 +121,7 @@ public class Game : Scene
 	{
 		defer
 		{
-			PlayMusicStream(Engine.Assets.Music);
+			Raylib.PlayMusicStream(Engine.Assets.Music);
 			Raylib.SetMusicVolume(Engine.Assets.Music, m_MusicMuted ? 0.0f : 1.0f);
 		}
 
@@ -125,13 +130,17 @@ public class Game : Scene
 
 		// NOTE: We should do a little test to check that Luigi is visible before starting.
 
-		m_RenderTextureGame = LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
+		m_RenderTextureGame = Raylib.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
+		m_RenderTextureScore = Raylib.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
 	}
 
 	public override void OnUnload()
 	{
-		UnloadRenderTexture(m_RenderTextureGame);
+		Raylib.UnloadRenderTexture(m_RenderTextureGame);
+		Raylib.UnloadRenderTexture(m_RenderTextureScore);
 	}
+
+	bool m_PlayedLevelStartSound = false;
 
 	public override void OnUpdate()
 	{
@@ -141,20 +150,33 @@ public class Game : Scene
 			Raylib.SetMusicVolume(Engine.Assets.Music, m_MusicMuted ? 0.0f : 1.0f);
 		}
 
-		UpdateMusicStream(Engine.Assets.Music);
+		Raylib.UpdateMusicStream(Engine.Assets.Music);
 
 		m_TimeSinceStateSwitch += Raylib.GetFrameTime();
 		m_HoveringFaceIndex = -1;
 
 		if (m_CurrentState == .STATE_PLAYING)
 		{
+			m_Timer -= Raylib.GetFrameTime();
+			if (m_LastCeilTime != CeilTimer())
+			{
+				// Raylib.PlaySound((CeilTimer() > 5) ? Engine.Assets.SFX_Tick.Sound : Engine.Assets.SFX_TickLittleTime.Sound);
+			}
+			m_LastCeilTime = CeilTimer();
+
 			simulateFaceMovement();
 		}
 		else if (m_CurrentState == .STATE_LOADING_ROOM)
 		{
+			if (m_TimeSinceStateSwitch >= Math.GetTimeFromFrames(7) && !m_PlayedLevelStartSound)
+			{
+				Raylib.PlaySound(Engine.Assets.SFX_LevelStart.Sound);
+				m_PlayedLevelStartSound = true;
+			}
 			if (m_TimeSinceStateSwitch >= Math.GetTimeFromFrames(12))
 			{
 				switchState(.STATE_PLAYING);
+				m_PlayedLevelStartSound = false;
 			}
 		}
 		else if (m_CurrentState == .STATE_FOUND)
@@ -174,7 +196,7 @@ public class Game : Scene
 		{
 			if (m_MusicMuted)
 			{
-				DrawText("Music Muted", 20, 40, 20, GREEN);
+				Raylib.DrawText("Music Muted", 20, 40, 20, Raylib.GREEN);
 			}
 		}
 
@@ -186,34 +208,54 @@ public class Game : Scene
 		m_MousePositionViewport = .((relativeMouseX / viewportSize.x) * SCREEN_WIDTH, (relativeMouseY / viewportSize.y) * SCREEN_HEIGHT);
 		m_MousePositionViewport = .(Math.Clamp(m_MousePositionViewport.x, 0, SCREEN_WIDTH), Math.Clamp(m_MousePositionViewport.y, 0, SCREEN_HEIGHT));
 
-		BeginTextureMode(m_RenderTextureGame);
+		Raylib.BeginTextureMode(m_RenderTextureGame);
 		{
 			drawGame();
 		}
-		EndTextureMode();
+		Raylib.EndTextureMode();
 
-		ClearBackground(Raylib.PINK);
+		Raylib.BeginTextureMode(m_RenderTextureScore);
+		{
+			drawScore();
+		}
+		Raylib.EndTextureMode();
 
-		DrawRectangleRec(getLeftSideRect(), .(15, 15, 15, 255));
-		DrawRectangleRec(getRightSideRect(), .(25, 25, 25, 255));
-		DrawLineEx(.(getRightSideRect().x, getRightSideRect().y), .(getRightSideRect().x, getRightSideRect().height), 2, Raylib.BLACK);
+		Raylib.ClearBackground(Raylib.BROWN);
 
-		// DrawTextureEx(Engine.Assets.Wanted.Texture, .(getRightSideRect().x, getRightSideRect().y), 0, 2, Raylib.WHITE);
+		Raylib.DrawRectangleRec(getLeftSideRect(), .(15, 15, 15, 255));
+		Raylib.DrawRectangleRec(getRightSideRect(), .(25, 25, 25, 255));
+		Raylib.DrawLineEx(.(getRightSideRect().x, getRightSideRect().y), .(getRightSideRect().x, getRightSideRect().height), 2, Raylib.BLACK);
 
-		DrawTexturePro(m_RenderTextureGame.texture, .(0, 0, m_RenderTextureGame.texture.width, -m_RenderTextureGame.texture.height),
+		Raylib.DrawTexturePro(m_RenderTextureScore.texture,
+			.(0, 0, m_RenderTextureScore.texture.width, -m_RenderTextureScore.texture.height),
+			.(getRightSideRect().x, getRightSideRect().y, getRightSideRect().width, getRightSideRect().width),
+			.(0, 0),
+			0,
+			Raylib.WHITE);
+
+		Raylib.DrawTexturePro(m_RenderTextureGame.texture,
+			.(0, 0, m_RenderTextureGame.texture.width, -m_RenderTextureGame.texture.height),
 			.(viewportPos.x, viewportPos.y, viewportSize.x, viewportSize.y),
-			.(0, 0), 0, WHITE);
+			.(0, 0),
+			0,
+			Raylib.WHITE);
+	}
+
+	public override void OnWindowResize()
+	{
+		Raylib.UnloadRenderTexture(m_RenderTextureScore);
+		m_RenderTextureScore = Raylib.LoadRenderTexture((int32)getRightSideRect().width, (int32)getRightSideRect().width);
 	}
 
 	private void drawGame()
 	{
 		if (m_CurrentState == .STATE_FOUND && m_TimeSinceStateSwitch >= Math.GetTimeFromFrames(25))
 		{
-			ClearBackground(BG_FOUND);
+			Raylib.ClearBackground(BG_FOUND);
 		}
 		else
 		{	
-			ClearBackground(BG_PLAYING);
+			Raylib.ClearBackground(BG_PLAYING);
 		}
 
 		void drawFace(int index, Color color)
@@ -226,7 +268,7 @@ public class Game : Scene
 			let halfFaceHeight = face.GetHalfFaceHeight();
 
 			let faceIndex = (int)face.Sprite - 10;
-			DrawTexturePro(Engine.Assets.SpriteSheet.Texture,
+			Raylib.DrawTexturePro(Engine.Assets.SpriteSheet.Texture,
 				.(faceIndex * 32, 0, 32, 32),
 				.(face.Position.x, face.Position.y, faceWidth, faceHeight),
 				.(halfFaceWidth, halfFaceHeight),
@@ -239,13 +281,51 @@ public class Game : Scene
 			// Actually drawing the faces
 			for (var i < m_Faces.Count)
 			{
-				drawFace(i, (m_HoveringFaceIndex == i) ? RED : WHITE);
+				drawFace(i, (m_HoveringFaceIndex == i) ? Raylib.RED : Raylib.WHITE);
 			}
 		}
 		else if (m_CurrentState == .STATE_FOUND)
 		{
-			drawFace(m_FoundIndex, WHITE);
+			drawFace(m_FoundIndex, Raylib.WHITE);
 		}
+	}
+
+	private void drawScore()
+	{
+		Raylib.ClearBackground(BG_FOUND);
+
+		let screenWidth = getRightSideRect().width;
+		let screenHeight = getRightSideRect().width;
+
+		int num = Math.Max(CeilTimer(), 0);
+		let numString = num.ToString(.. scope .());
+
+		let fontScale = 3;
+		let spaceBtwChars = 0;
+
+		let fontHeight = Engine.Assets.TimerNumbers.Texture.height * fontScale;
+		let stringWidth = (numString.Length * (16 + spaceBtwChars)) * fontScale;
+		let fontPosX = (screenWidth * 0.5f) - (stringWidth * 0.5f);
+		let fontPosY = (screenHeight * 0.5f) - (fontHeight * 0.5f);
+
+		// Raylib.DrawRectangle((int32)fontPosX, (int32)fontPosY, (int32)stringWidth, 15 * fontScale, Raylib.RED);
+
+		let fontOffset = Vector2(Math.Round(fontPosX), fontPosY);
+		for (var i = 0; i < numString.Length; i++)
+		{
+			let char = numString[i];
+			let charI = int8.Parse(char.ToString(.. scope .()));
+
+			let charX = (((14 + spaceBtwChars) * fontScale) * i) + (numString.Length);
+
+			Raylib.DrawTexturePro(Engine.Assets.TimerNumbers.Texture,
+				.(charI * 16, 0, 16, 15),
+				.(Math.Round(charX) + fontOffset.x, (0) + fontOffset.y, 16 * fontScale, 15 * fontScale),
+				.(0, 0),
+				0,
+				Raylib.WHITE);
+		}
+		Raylib.DrawTextureEx(Engine.Assets.TimerLabel.Texture, .((screenHeight * 0.5f) - ((Engine.Assets.TimerLabel.Texture.width * fontScale) * 0.5f), fontPosY - 30), 0, fontScale, Raylib.WHITE);
 	}
 
 	private void simulateFaceMovement()
@@ -283,11 +363,12 @@ public class Game : Scene
 		{
 			var face = m_Faces[m_HoveringFaceIndex];
 
-			if (IsMouseButtonPressed(.MOUSE_BUTTON_LEFT))
+			if (Raylib.IsMouseButtonPressed(.MOUSE_BUTTON_LEFT))
 			{
 				if (face.Sprite == .FACE_LUIGI)
 				{
 					Engine.ConsoleLog("You found Luigi! +5 points!");
+					m_Timer += 5;
 
 					switchState(.STATE_FOUND);
 					m_FoundIndex = m_HoveringFaceIndex;
@@ -296,6 +377,7 @@ public class Game : Scene
 				}
 				else
 				{
+					m_Timer -= 10;
 					Engine.ConsoleLog("That's not Luigi! -10 points!");
 				}
 			}

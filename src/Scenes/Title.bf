@@ -37,4 +37,5 @@ public class Title : Scene
 	}
 
 	public override void OnDraw(){}
+	public override void OnWindowResize(){}
 }
