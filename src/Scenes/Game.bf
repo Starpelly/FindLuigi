@@ -11,7 +11,7 @@ public class Game : Scene
 	private RenderTexture m_RenderTextureGame;
 	private RenderTexture m_RenderTextureScore;
 
-	private float m_Timer = 10;
+	private float m_Timer = 20;
 	private int CeilTimer() => (int)Math.Ceiling(m_Timer);
 	private int m_LastCeilTime = -1;
 
@@ -51,18 +51,15 @@ public class Game : Scene
 
 	private void loadSimulationTree()
 	{
-		/*
 #if BF_PLATFORM_WINDOWS		
 		{
-			let simulation = new FindLuigi.Game.Simulations.DVDScreenSaver();
-			simulation.NoMove = false;
+			let simulation = new FindLuigi.Game.Simulations.BouncyCastle();
 
-			startRoom(82, simulation);
+			startLevel(45, simulation);
 		}
 
 		return;
 #endif
-		*/
 
 		if (m_CurrentRoomIndex < 3)
 		{
@@ -160,7 +157,7 @@ public class Game : Scene
 			m_Timer -= Raylib.GetFrameTime();
 			if (m_LastCeilTime != CeilTimer())
 			{
-				// Raylib.PlaySound((CeilTimer() > 5) ? Engine.Assets.SFX_Tick.Sound : Engine.Assets.SFX_TickLittleTime.Sound);
+				Raylib.PlaySound((CeilTimer() > 5) ? Engine.Assets.SFX_Tick.Sound : Engine.Assets.SFX_TickLittleTime.Sound);
 			}
 			m_LastCeilTime = CeilTimer();
 
