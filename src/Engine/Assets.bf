@@ -5,13 +5,16 @@ namespace FindLuigi;
 
 public static struct Data
 {
-	public static uint8[?] SpriteSheetData = Compiler.ReadBinary("assets/spritesheet.png");
-	public static uint8[?] BoxsubmusLogoData = Compiler.ReadBinary("assets/boxsubmus-logo.png");
-	public static uint8[?] LogoData = Compiler.ReadBinary("assets/logo.png");
-	public static uint8[?] TimerNumbersData = Compiler.ReadBinary("assets/timer-numbers.png");
-	public static uint8[?] TimerLabelData = Compiler.ReadBinary("assets/time-label.png");
+	public static uint8[?] Data_Sprit_Luigi = Compiler.ReadBinary("assets/sprites/luigi.png");
 
-	public static uint8[?] MusicData = Compiler.ReadBinary("assets/music.ogg");
+	public static uint8[?] SpriteSheetData = Compiler.ReadBinary("assets/sprites/spritesheet.png");
+	public static uint8[?] BoxsubmusLogoData = Compiler.ReadBinary("assets/sprites/boxsubmus-logo.png");
+	public static uint8[?] LogoData = Compiler.ReadBinary("assets/sprites/logo.png");
+	public static uint8[?] TimerNumbersData = Compiler.ReadBinary("assets/sprites/timer-numbers.png");
+	public static uint8[?] TimerLabelData = Compiler.ReadBinary("assets/sprites/time-label.png");
+
+	public static uint8[?] MusicData = Compiler.ReadBinary("assets/music/main.ogg");
+	public static uint8[?] MusicFinaleData = Compiler.ReadBinary("assets/music/luigitale.ogg");
 
 	public static uint8[?] SFX_MenuSelect = Compiler.ReadBinary("assets/sfx/menu-select.ogg");
 	public static uint8[?] SFX_HighScore = Compiler.ReadBinary("assets/sfx/high-score.ogg");
@@ -69,6 +72,8 @@ public class Assets
 		}
 	}
 
+	public TextureEx Sprite_Luigi { get; private set; } = new .(&Data.Data_Sprit_Luigi, Data.Data_Sprit_Luigi.Count) ~ delete _;
+
 	public TextureEx SpriteSheet { get; private set; } = new .(&Data.SpriteSheetData, Data.SpriteSheetData.Count) ~ delete _;
 	public TextureEx BoxsubmusLogo { get; private set; } = new .(&Data.BoxsubmusLogoData, Data.BoxsubmusLogoData.Count, .TEXTURE_FILTER_BILINEAR) ~ delete _;
 	public TextureEx Logo { get; private set; } = new .(&Data.LogoData, Data.LogoData.Count) ~ delete _;
@@ -76,6 +81,7 @@ public class Assets
 	public TextureEx TimerLabel { get; private set; } = new .(&Data.TimerLabelData, Data.TimerLabelData.Count) ~ delete _;
 
 	public Music Music { get; private set; }
+	public Music MusicFinale { get; private set; }
 
 	public SoundFX SFX_MenuSelect { get; private set; } = new SoundFX(&Data.SFX_MenuSelect, Data.SFX_MenuSelect.Count) ~ delete _;
 	public SoundFX SFX_HighScore { get; private set; } = new SoundFX(&Data.SFX_HighScore, Data.SFX_HighScore.Count) ~ delete _;
@@ -90,10 +96,12 @@ public class Assets
 	{
 		// Game Music
 		Music = Raylib.LoadMusicStreamFromMemory(".ogg", (char8*)&Data.MusicData, Data.MusicData.Count);
+		MusicFinale = Raylib.LoadMusicStreamFromMemory(".ogg", (char8*)&Data.MusicFinaleData, Data.MusicFinaleData.Count);
 	}
 
 	public ~this()
 	{
 		Raylib.UnloadMusicStream(Music);
+		Raylib.UnloadMusicStream(MusicFinale);
 	}
 }

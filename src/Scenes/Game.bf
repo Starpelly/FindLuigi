@@ -11,7 +11,7 @@ public class Game : Scene
 	private RenderTexture m_RenderTextureGame;
 	private RenderTexture m_RenderTextureScore;
 
-	private float m_Timer = 20;
+	private float m_Timer = 22;
 	private int CeilTimer() => (int)Math.Ceiling(m_Timer);
 	private int m_LastCeilTime = -1;
 
@@ -49,14 +49,36 @@ public class Game : Scene
 		return .(getLeftSideRect().width, 0, Raylib.GetScreenWidth() - getLeftSideRect().width, Raylib.GetScreenHeight());
 	}
 
+	private Type GetSimulationType(int index)
+	{
+		switch (index)
+		{
+		case 0: return typeof(FindLuigi.Game.Simulations.BasicGrid);
+		case 1: return typeof(FindLuigi.Game.Simulations.DVDScreenSaver);
+		case 2: return typeof(FindLuigi.Game.Simulations.BouncyCastle);
+		case 3: return typeof(FindLuigi.Game.Simulations.Cars);
+		case 4: return typeof(FindLuigi.Game.Simulations.NoBounceTwoDirectional);
+		}
+		return typeof(FindLuigi.Game.Simulations.BasicGrid);
+	}
+
 	private void loadSimulationTree()
 	{
-#if BF_PLATFORM_WINDOWS		
+#if BF_PLATFORM_WINDOWS
+
 		{
 			let simulation = new FindLuigi.Game.Simulations.BouncyCastle();
 
-			startLevel(45, simulation);
+			startLevel(62, simulation);
 		}
+
+		/*
+		{
+			let simulation = new FindLuigi.Game.Simulations.Finale();
+
+			startLevel(7, simulation);
+		}
+		*/
 
 		return;
 #endif
@@ -104,9 +126,10 @@ public class Game : Scene
 			var newFace = Face() {
 				Sprite =
 					i == (int)luigiIndex ?
-					Sprite.FACE_LUIGI
+					Sprite.FACE_LUIGI_GREEN
 					:
-					 (Sprite)Raylib.GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO)
+					 (Sprite)Raylib.GetRandomValue((int32)Sprite.FACE_MARIO, (int32)Sprite.FACE_WARIO),
+				IsLuigi = i == (int)luigiIndex
 			};
 
 			m_Faces.Add(newFace);
@@ -157,7 +180,8 @@ public class Game : Scene
 			m_Timer -= Raylib.GetFrameTime();
 			if (m_LastCeilTime != CeilTimer())
 			{
-				Raylib.PlaySound((CeilTimer() > 5) ? Engine.Assets.SFX_Tick.Sound : Engine.Assets.SFX_TickLittleTime.Sound);
+				let sound = (CeilTimer() > 5) ? Engine.Assets.SFX_Tick.Sound : Engine.Assets.SFX_TickLittleTime.Sound;
+				Raylib.PlaySound(sound);
 			}
 			m_LastCeilTime = CeilTimer();
 
@@ -244,6 +268,28 @@ public class Game : Scene
 		m_RenderTextureScore = Raylib.LoadRenderTexture((int32)getRightSideRect().width, (int32)getRightSideRect().width);
 	}
 
+	public static void DrawFace(Face face, Color color)
+	{
+		let data = FindLuigi.Game.GetSpriteData(face.Sprite);
+
+		DrawFaceEx(face, data.0, data.1, color);
+	}
+
+	public static void DrawFaceEx(Face face, Assets.TextureEx texture, Rectangle textureRect, Color color)
+	{
+		let faceWidth = face.GetFaceWidth();
+		let faceHeight = face.GetFaceHeight();
+		let halfFaceWidth = face.GetHalfFaceWidth();
+		let halfFaceHeight = face.GetHalfFaceHeight();
+
+		Raylib.DrawTexturePro(texture.Texture,
+			textureRect,
+			.(face.Position.x, face.Position.y, faceWidth, faceHeight),
+			.(halfFaceWidth, halfFaceHeight),
+			0,
+			color);
+	}
+
 	private void drawGame()
 	{
 		if (m_CurrentState == .STATE_FOUND && m_TimeSinceStateSwitch >= Math.GetTimeFromFrames(25))
@@ -255,35 +301,17 @@ public class Game : Scene
 			Raylib.ClearBackground(BG_PLAYING);
 		}
 
-		void drawFace(int index, Color color)
-		{
-			var face = m_Faces[index];
-
-			let faceWidth = face.GetFaceWidth();
-			let faceHeight = face.GetFaceHeight();
-			let halfFaceWidth = face.GetHalfFaceWidth();
-			let halfFaceHeight = face.GetHalfFaceHeight();
-
-			let faceIndex = (int)face.Sprite - 10;
-			Raylib.DrawTexturePro(Engine.Assets.SpriteSheet.Texture,
-				.(faceIndex * 32, 0, 32, 32),
-				.(face.Position.x, face.Position.y, faceWidth, faceHeight),
-				.(halfFaceWidth, halfFaceHeight),
-				0,
-				color);
-		}
-
 		if (m_CurrentState == .STATE_PLAYING)
 		{
 			// Actually drawing the faces
 			for (var i < m_Faces.Count)
 			{
-				drawFace(i, (m_HoveringFaceIndex == i) ? Raylib.RED : Raylib.WHITE);
+				DrawFace(m_Faces[i], (m_HoveringFaceIndex == i) ? Raylib.RED : Raylib.WHITE);
 			}
 		}
 		else if (m_CurrentState == .STATE_FOUND)
 		{
-			drawFace(m_FoundIndex, Raylib.WHITE);
+			DrawFace(m_Faces[m_FoundIndex], Raylib.WHITE);
 		}
 	}
 
@@ -345,7 +373,7 @@ public class Game : Scene
 				// NOTE: Replace with sprite properties instead (create a manager for that, eventually!)
 				let mouseImageX = (int)(Math.Floor((m_MousePositionViewport.x - face.Position.x + halfFaceWidth) / (float)FACE_SCALE) / face.Scale);
 				let mouseImageY = (int)(Math.Floor((m_MousePositionViewport.y - face.Position.y + halfFaceHeight) / (float)FACE_SCALE) / face.Scale);
-				let mouseOnTransparentPixel = Engine.PixelOnSpriteTransparent((face.Sprite - Sprite.FACE_LUIGI) * (FACE_WIDTH / FACE_SCALE), 0, mouseImageX, mouseImageY);
+				let mouseOnTransparentPixel = Engine.PixelOnSpriteTransparent((face.Sprite - Sprite.FACE_LUIGI_GREEN) * (FACE_WIDTH / FACE_SCALE), 0, mouseImageX, mouseImageY);
 
 				if (!mouseOnTransparentPixel)
 				{
@@ -362,7 +390,7 @@ public class Game : Scene
 
 			if (Raylib.IsMouseButtonPressed(.MOUSE_BUTTON_LEFT))
 			{
-				if (face.Sprite == .FACE_LUIGI)
+				if (face.IsLuigi)
 				{
 					Engine.ConsoleLog("You found Luigi! +5 points!");
 					m_Timer += 5;

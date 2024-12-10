@@ -22,7 +22,7 @@ public class Engine
 
 	private static void emscriptenMainLoop()
 	{
-		update();
+		g_Instance.loop();
 	}
 #endif
 

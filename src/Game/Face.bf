@@ -5,6 +5,7 @@ namespace FindLuigi.Game;
 public struct Face
 {
 	public Sprite Sprite;
+	public bool IsLuigi = false;
 
 	public Vector2 Position;
 

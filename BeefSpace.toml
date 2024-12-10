@@ -17,7 +17,17 @@ AllocType = "CRT"
 EnableObjectDebugFlags = false
 EmitObjectAccessCheck = false
 
+[Configs.Paranoid.wasm64]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+
 [Configs.Test.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+
+[Configs.Test.wasm64]
 AllocType = "CRT"
 EnableObjectDebugFlags = false
 EmitObjectAccessCheck = false
